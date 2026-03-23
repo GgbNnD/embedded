@@ -10,6 +10,7 @@ import threading
 import qrcode
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from PIL import Image, ImageTk
 
 KNOWN_FACES_DIR = 'known'
 LOG_FILE = 'material_log.csv'
@@ -21,6 +22,7 @@ known_names = []
 server_socket = None
 server_running = False
 log_callback = None
+image_callback = None
 
 def log_msg(msg):
     print(msg)
@@ -91,16 +93,15 @@ def register_face(name, img_bytes):
     else:
         return "No face detected, register failed"
 
-def save_material_log(person, action, material):
+def save_material_log(timestamp, person, action, material):
     file_exists = os.path.isfile(LOG_FILE)
     try:
         with open(LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             if not file_exists:
                 writer.writerow(['Timestamp', 'Person', 'Action', 'Material Info'])
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             writer.writerow([timestamp, person, action, material])
-        log_msg(f"已保存物资记录: {person} {action} {material}")
+        log_msg(f"已保存物资记录: {timestamp} | {person} | {action} | {material}")
     except Exception as e:
         log_msg(f"保存物资记录失败: {e}")
 
@@ -140,6 +141,9 @@ def handle_client(client_socket, client_address):
                         break
                     img_bytes += packet
                     
+                if image_callback:
+                    image_callback(img_bytes)
+                    
                 result = recognize_face(img_bytes)
                 log_msg(f"识别请求完成: {result}")
                 client_socket.send(result.encode('utf-8'))
@@ -156,6 +160,9 @@ def handle_client(client_socket, client_address):
                         break
                     img_bytes += packet
                     
+                if image_callback:
+                    image_callback(img_bytes)
+                    
                 result = register_face(name, img_bytes)
                 log_msg(f"录入请求完成 ({name}): {result}")
                 client_socket.send(result.encode('utf-8'))
@@ -163,8 +170,9 @@ def handle_client(client_socket, client_address):
             elif cmd == "DATA":
                 person = cmd_parts[1]
                 action = cmd_parts[2]
-                material = cmd_parts[3]
-                save_material_log(person, action, material)
+                timestamp = cmd_parts[3]
+                material = ",".join(cmd_parts[4:])
+                save_material_log(timestamp, person, action, material)
                 client_socket.send(b"Data Saved")
                 
             elif cmd == "GEN_QR":
@@ -255,6 +263,11 @@ class ServerUI:
         global log_callback
         log_callback = self.append_log
         
+        global image_callback
+        image_callback = self.update_image
+        
+        self.imgtk = None
+        
         notebook = ttk.Notebook(root)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
@@ -270,6 +283,9 @@ class ServerUI:
         
         self.btn_stop = ttk.Button(control_frame, text="停止服务器", command=self.ui_stop_server, state=tk.DISABLED)
         self.btn_stop.pack(side=tk.LEFT, padx=5)
+        
+        self.image_label = tk.Label(tab_server, text="等待接收图片...", bg="gray", height=15)
+        self.image_label.pack(fill=tk.X, pady=5)
         
         self.log_text = tk.Text(tab_server, wrap=tk.WORD, state=tk.DISABLED)
         self.log_text.pack(fill=tk.BOTH, expand=True, pady=5)
@@ -358,6 +374,27 @@ class ServerUI:
                 messagebox.showwarning("失败", f"人脸录入失败: {result}")
         except Exception as e:
             messagebox.showerror("错误", f"录入过程发生异常: {e}")
+
+    def update_image(self, img_bytes):
+        def _update():
+            try:
+                img = np.asarray(bytearray(img_bytes), dtype="uint8")
+                img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+                if img is not None:
+                    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    h, w = rgb_img.shape[:2]
+                    max_size = 300
+                    if w > max_size or h > max_size:
+                        scale = max_size / max(w, h)
+                        rgb_img = cv2.resize(rgb_img, (int(w*scale), int(h*scale)))
+                    
+                    pil_img = Image.fromarray(rgb_img)
+                    self.imgtk = ImageTk.PhotoImage(image=pil_img)
+                    self.image_label.config(image=self.imgtk, text="", height=0)
+            except Exception as e:
+                log_msg(f"显示图片异常: {e}")
+                
+        self.root.after(0, _update)
 
     def append_log(self, msg):
         self.log_text.config(state=tk.NORMAL)
