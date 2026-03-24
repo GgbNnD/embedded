@@ -5,6 +5,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
+from datetime import datetime
 import subprocess
 import time
 
@@ -247,9 +248,10 @@ class ClientUI:
         materials_str = " | ".join(materials)
         success = False
         try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((HOST, PORT))
-                cmd = f"DATA,{self.current_person},{self.current_action},{materials_str}"
+                cmd = f"DATA,{self.current_person},{self.current_action},{timestamp},{materials_str}"
                 s.sendall(cmd.encode('utf-8'))
                 result = s.recv(1024).decode('utf-8')
                 self.root.after(0, lambda: self.log(f"Server reply: {result}"))
