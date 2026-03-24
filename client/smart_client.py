@@ -27,7 +27,9 @@ class ClientUI:
         
         self.camera_active = False
         self.latest_frame = None
-        self.detector = cv2.QRCodeDetector()
+        # self.detector = cv2.QRCodeDetector() # Local detection removed
+        self.last_qr_request_time = 0
+        self.is_requesting_qr = False
         
         self.setup_ui()
         self.reset_state()
@@ -223,9 +225,39 @@ class ClientUI:
             self.root.after(0, lambda: self.log(f"Verification failed: {person}"))
             self.root.after(0, self.reset_state)
 
+    def do_recognize_qr(self, frame):
+        try:
+            success, encoded_image = cv2.imencode('.jpg', frame)
+            if not success:
+                return
+
+            img_bytes = encoded_image.tobytes()
+            
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT))
+                cmd = f"RECOGNIZE_QR,{len(img_bytes)}"
+                s.sendall(cmd.encode('utf-8'))
+                
+                resp = s.recv(1024)
+                if resp == b'ok':
+                    s.sendall(img_bytes)
+                    result = s.recv(1024).decode('utf-8')
+                    # result may be "No QR Detected" or the QR data
+                    if result and "No QR Detected" not in result and "Failed" not in result:
+                        self.root.after(0, lambda r=result: self.handle_qr_result(r))
+        except Exception as e:
+            print(f"QR Recognition Error: {e}")
+        finally:
+            self.is_requesting_qr = False
+
+    def handle_qr_result(self, qr_data):
+        if qr_data not in self.scanned_materials:
+            self.scanned_materials.add(qr_data)
+            self.log(f"[*] Remote Scanned: {qr_data}")
+
     def on_recognize_success(self):
         self.log(f"Identity verified! Welcome {self.current_person}.")
-        self.log("Align QR code with camera. Auto-scan on detect. Click [Finish Scan] when done.")
+        self.log("Align QR code with camera. Auto-scan on server. Click [Finish Scan] when done.")
         self.state = "QR"
         self.scanned_materials.clear()
         self.update_buttons()
@@ -271,17 +303,13 @@ class ClientUI:
             
             # QR Detection
             if self.state == "QR":
-                data, bbox, _ = self.detector.detectAndDecode(frame)
-                if data and data not in self.scanned_materials:
-                    self.scanned_materials.add(data)
-                    self.log(f"[*] Scanned: {data}")
-                    
-                if bbox is not None:
-                    n = len(bbox)
-                    for j in range(n):
-                        cv2.line(display_frame, tuple(int(x) for x in bbox[j][0]), tuple(int(x) for x in bbox[(j+1) % n][0]), (0, 255, 0), 3)
+                current_time = time.time()
+                if not self.is_requesting_qr and (current_time - self.last_qr_request_time) > 0.5: # 2 FPS limit
+                    self.is_requesting_qr = True
+                    self.last_qr_request_time = current_time
+                    threading.Thread(target=self.do_recognize_qr, args=(frame.copy(),), daemon=True).start()
 
-                cv2.putText(display_frame, f"Scanned: {len(self.scanned_materials)}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.putText(display_frame, f"Remote Scan: {len(self.scanned_materials)}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             elif self.state == "FACE":
                 cv2.putText(display_frame, "Please face the camera", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 

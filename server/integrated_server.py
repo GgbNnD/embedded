@@ -75,6 +75,19 @@ def recognize_face(img_bytes):
         return "No face detected"
     return ",".join(recognized_names)
 
+def recognize_qr(img_bytes):
+    img = np.asarray(bytearray(img_bytes), dtype="uint8")
+    img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+    if img is None:
+        return "Image Decode Failed"
+    
+    detector = cv2.QRCodeDetector()
+    data, bbox, _ = detector.detectAndDecode(img)
+    
+    if data:
+        return data
+    return "No QR Detected"
+
 def register_face(name, img_bytes):
     img = np.asarray(bytearray(img_bytes), dtype="uint8")
     img = cv2.imdecode(img, cv2.IMREAD_COLOR)
@@ -148,6 +161,25 @@ def handle_client(client_socket, client_address):
                 log_msg(f"识别请求完成: {result}")
                 client_socket.send(result.encode('utf-8'))
                 
+            elif cmd == "RECOGNIZE_QR":
+                total_len = int(cmd_parts[1])
+                client_socket.send(b"ok")
+                
+                img_bytes = b""
+                while len(img_bytes) < total_len:
+                    packet = client_socket.recv(min(256000, total_len - len(img_bytes)))
+                    if not packet:
+                        break
+                    img_bytes += packet
+                
+                # Image callback optional for QR
+                # if image_callback:
+                #    image_callback(img_bytes)
+                    
+                result = recognize_qr(img_bytes)
+                log_msg(f"QR识别请求完成: {result}")
+                client_socket.send(result.encode('utf-8'))
+
             elif cmd == "REGISTER":
                 name = cmd_parts[1]
                 total_len = int(cmd_parts[2])
