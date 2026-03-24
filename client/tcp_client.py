@@ -3,35 +3,35 @@ import cv2
 import time
 import socket
 
-# 服务端ip地址
+# Server IP address
 HOST = '172.27.86.36'
-# 服务端端口号
+# Server port
 PORT = 8080
 ADDRESS = (HOST, PORT)
 
-# 创建一个套接字
+# Create a socket
 tcpClient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# 连接远程ip
+# Connect to remote IP
 tcpClient.connect(ADDRESS)
 
-# 计时
+# Timer
 start = time.perf_counter()
-# 读取图像
+# Read image
 cv_image = cv2.imread("unknown/people.jpg")
-# 压缩图像
+# Compress image
 img_encode = cv2.imencode('.jpg', cv_image, [cv2.IMWRITE_JPEG_QUALITY, 99])[1]
-# 转换为字节流
+# Convert to byte stream
 bytedata = img_encode.tobytes()
-# 标志数据，包括待发送的字节流长度等数据，用‘,’隔开
+# Flag data, including the length of the byte stream to be sent, separated by ','
 flag_data = (str(len(bytedata))).encode() + ",".encode() + " ".encode()
 tcpClient.send(flag_data)
-# 接收服务端的应答
+# Receive server response
 data = tcpClient.recv(1024)
 if ("ok" == data.decode()):
-    # 服务端已经收到标志数据，开始发送图像字节流数据
+    # Server has received flag data, start sending image byte stream data
     tcpClient.send(bytedata)
-# 接收服务端的应答
+# Receive server response
 data = tcpClient.recv(1024)
 if ("ok" == data.decode()):
-    # 计算发送完成的延时
-    print("延时：" + str(int((time.perf_counter() - start) * 1000)) + "ms")
+    # Calculate send completion delay
+    print("Delay: " + str(int((time.perf_counter() - start) * 1000)) + "ms")

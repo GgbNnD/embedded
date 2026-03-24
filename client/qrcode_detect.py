@@ -4,36 +4,36 @@ from pyzbar import pyzbar
 from PIL import Image
 
 def detect_and_decode_qr(image_path):
-    # 1. 读取图片
+    # 1. Read image
     img = cv2.imread(image_path)
     if img is None:
-        print(f"错误：无法加载图片 {image_path}")
+        print(f"Error: Cannot load image {image_path}")
         return []
 
     original_img = img.copy()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # 2. 图像预处理 (关键步骤：应对复杂背景)
-    # 使用自适应阈值二值化，比全局阈值更能处理光照不均和复杂背景
-    # blockSize: 邻域大小 (必须是奇数), C: 常数减去平均值
+    # 2. Image preprocessing (Key step: dealing with complex backgrounds)
+    # Use adaptive thresholding, better than global thresholding for uneven lighting and complex backgrounds
+    # blockSize: neighborhood size (must be odd), C: constant subtracted from the mean
     binary = cv2.adaptiveThreshold(
         gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
         cv2.THRESH_BINARY, 11, 2
     )
 
-    # 可选：形态学操作，去除噪点，连接断裂的线条
+    # Optional: Morphological operations to remove noise and connect broken lines
     kernel = np.ones((3, 3), np.uint8)
     dilated_binary = cv2.dilate(binary, kernel, iterations=2)
     eroded_binary = cv2.erode(dilated_binary, kernel, iterations=1)
 
-    # 3. 查找轮廓
+    # 3. Find contours
     contours, _ = cv2.findContours(eroded_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     qr_results = []
     found_qr_regions = []
 
-    # 4. 筛选可能的二维码区域
-    # 二维码通常具有较大的面积和近似矩形的形状
+    # 4. Filter possible QR code regions
+    # QR codes usually have a large area and approximately rectangular shape
     img_area = img.shape[0] * img.shape[1]
     
     potential_rois = []
@@ -41,26 +41,26 @@ def detect_and_decode_qr(image_path):
     for cnt in contours:
         area = cv2.contourArea(cnt)
         
-        # 过滤太小的噪点 (小于图片面积的 1%) 和太大的区域 (整个背景)
+        # Filter noise that is too small (< 1% of image area) and regions that are too large (whole background)
         if 0.01 * img_area < area < 0.9 * img_area:
             x, y, w, h = cv2.boundingRect(cnt)
             aspect_ratio = float(w)/h
             
-            # 二维码长宽比通常接近 1 (0.8 - 1.2 之间)
+            # QR code aspect ratio is usually close to 1 (between 0.8 - 1.2)
             if 0.8 <= aspect_ratio <= 1.2:
                 potential_rois.append((x, y, w, h))
 
-    # 如果没有找到明显的几何轮廓，尝试直接对全图或二值化图进行解码
-    # 因为有些二维码背景非常干净，轮廓查找反而可能失效
+    # If no obvious geometric contours are found, try decoding the full image or binary image directly
+    # Because some QR code backgrounds are very clean, contour finding might fail instead
     if not potential_rois:
-        print("未检测到明显轮廓，尝试全图直接解码...")
-        # 注意：pyzbar 返回的 rect 格式通常是 (left, top, width, height)
+        print("No obvious contours detected, trying full image decoding directly...")
+        # Note: rect format returned by pyzbar is usually (left, top, width, height)
         decoded_objects = pyzbar.decode(Image.fromarray(cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)))
         
         if decoded_objects:
             for obj in decoded_objects:
                 left, top, width, height = obj.rect
-                # 统一格式：转换为 (x_start, y_start, x_end, y_end)
+                # Unified format: convert to (x_start, y_start, x_end, y_end)
                 location = (left, top, left + width, top + height)
                 
                 qr_results.append({
@@ -69,15 +69,15 @@ def detect_and_decode_qr(image_path):
                     "location_in_original": location
                 })
                 
-                # 如果在全图模式下识别成功，也可以画个框方便查看
+                # If recognition is successful in full image mode, draw a box for easy viewing
                 cv2.rectangle(original_img, (left, top), (left + width, top + height), (255, 0, 0), 2)
         
-        # 保存结果并返回
+        # Save result and return
         cv2.imwrite("qrcode/result_detected.jpg", original_img)
         return qr_results
 
-    # 5. 对筛选出的区域进行解码 (ROI 策略)
-    # 合并重叠的区域，避免重复解码
+    # 5. Decode the filtered regions (ROI strategy)
+    # Merge overlapping regions to avoid duplicate decoding
     final_rois = []
     for r in potential_rois:
         is_new = True
@@ -89,14 +89,14 @@ def detect_and_decode_qr(image_path):
             final_rois.append(r)
 
     for (x, y, w, h) in final_rois:
-        # 增加一点边距 (padding)，防止切割掉定位图案
+        # Add some padding to prevent cutting off positioning patterns
         padding = int(w * 0.1)
         x_start = max(0, x - padding)
         y_start = max(0, y - padding)
         x_end = min(img.shape[1], x + w + padding)
         y_end = min(img.shape[0], y + h + padding)
 
-        # 裁剪感兴趣区域 (ROI)
+        # Crop Region of Interest (ROI)
         roi = original_img[y_start:y_end, x_start:x_end]
         
         # 尝试解码 ROI

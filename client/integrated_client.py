@@ -2,7 +2,7 @@ import socket
 import cv2
 import os
 
-HOST = '127.0.0.1'
+HOST = '192.168.168.149'
 PORT = 8080
 
 def send_image_for_recognition(image_path):
@@ -19,7 +19,7 @@ def send_image_for_recognition(image_path):
         if resp == b'ok':
             s.sendall(img_bytes)
             result = s.recv(1024)
-            print(f"识别结果: {result.decode('utf-8')}")
+            print(f"Recognition result: {result.decode('utf-8')}")
 
 def register_face(name, image_path):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -35,7 +35,7 @@ def register_face(name, image_path):
         if resp == b'ok':
             s.sendall(img_bytes)
             result = s.recv(1024)
-            print(f"录入结果: {result.decode('utf-8')}")
+            print(f"Registration result: {result.decode('utf-8')}")
 
 def send_material_data(person, action, material):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -45,7 +45,7 @@ def send_material_data(person, action, material):
         s.sendall(cmd.encode('utf-8'))
         
         result = s.recv(1024)
-        print(f"数据保存结果: {result.decode('utf-8')}")
+        print(f"Data save result: {result.decode('utf-8')}")
 
 def generate_qr(name, mat_id):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -53,36 +53,36 @@ def generate_qr(name, mat_id):
         cmd = f"GEN_QR,{name},{mat_id}"
         s.sendall(cmd.encode('utf-8'))
         result = s.recv(1024)
-        print(f"服务器回复: {result.decode('utf-8')}")
+        print(f"Server reply: {result.decode('utf-8')}")
 
 if __name__ == "__main__":
-    print("选择操作:")
-    print("1. 人脸录入 (REGISTER)")
-    print("2. 人脸识别 (RECOGNIZE)")
-    print("3. 发送物资数据 (DATA)")
-    print("4. 生成物资二维码 (GEN_QR)")
+    print("Select operation:")
+    print("1. Face Registration (REGISTER)")
+    print("2. Face Recognition (RECOGNIZE)")
+    print("3. Send Material Data (DATA)")
+    print("4. Generate Material QR (GEN_QR)")
     
-    choice = input("请输入选项: ")
+    choice = input("Enter option: ")
     
     if choice == "1":
-        name = input("输入姓名: ")
-        img_path = input("输入图片路径: ")
+        name = input("Enter name: ")
+        img_path = input("Enter image path: ")
         if os.path.exists(img_path):
             register_face(name, img_path)
         else:
-            print("文件不存在")
+            print("File does not exist")
     elif choice == "2":
-        img_path = input("输入需识别图片路径: ")
+        img_path = input("Enter image path for recognition: ")
         if os.path.exists(img_path):
             send_image_for_recognition(img_path)
         else:
-            print("文件不存在")
+            print("File does not exist")
     elif choice == "3":
-        person = input("人员姓名: ")
-        action = input("进出状态(入库/出库): ")
-        material = input("物资信息: ")
+        person = input("Person name: ")
+        action = input("Status (Inbound/Outbound): ")
+        material = input("Material info: ")
         send_material_data(person, action, material)
     elif choice == "4":
-        name = input("物资名称: ")
-        mat_id = input("物资编号: ")
+        name = input("Material name: ")
+        mat_id = input("Material ID: ")
         generate_qr(name, mat_id)
