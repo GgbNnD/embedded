@@ -8,8 +8,29 @@ from PIL import Image, ImageTk
 from datetime import datetime
 import subprocess
 import time
+import RPi.GPIO as GPIO
 
-HOST = '127.0.0.1'
+# --- 舵机配置 ---
+SERVO_PIN = 14
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(SERVO_PIN, GPIO.OUT)
+pwm = GPIO.PWM(SERVO_PIN, 50)
+pwm.start(0)
+
+def set_angle(angle):
+    """控制舵机转动到指定角度并归零"""
+    angle = max(0, min(180, angle))
+    duty = 2.5 + (10.0 * angle / 180.0)
+    GPIO.output(SERVO_PIN, True)
+    pwm.ChangeDutyCycle(duty)
+    time.sleep(0.5)
+    GPIO.output(SERVO_PIN, False)
+    pwm.ChangeDutyCycle(0)
+
+# 初始化门为关闭状态 (90度)
+set_angle(0)
+
+HOST = '192.168.168.149'
 PORT = 8080
 QR_SYNC_DIR = 'qrcode_sync'
 
@@ -63,12 +84,17 @@ class ClientUI:
         
         ttk.Separator(right_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=15)
         
+        self.btn_close_door = ttk.Button(right_frame, text="Close Door", command=self.close_door)
+        self.btn_close_door.pack(fill=tk.X, pady=5)
+        
+        ttk.Separator(right_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=15)
+        
         self.frame_controls = ttk.Frame(right_frame)
         self.frame_controls.pack(fill=tk.X, pady=5)
         
-        self.btn_capture = ttk.Button(self.frame_controls, text="📸 Capture Face ID", command=self.capture_face)
-        self.btn_finish_qr = ttk.Button(self.frame_controls, text="✅ Finish Scan", command=self.finish_scan)
-        self.btn_cancel = ttk.Button(self.frame_controls, text="❌ Cancel", command=self.reset_state)
+        self.btn_capture = ttk.Button(self.frame_controls, text="Capture Face ID", command=self.capture_face)
+        self.btn_finish_qr = ttk.Button(self.frame_controls, text="Finish Scan", command=self.finish_scan)
+        self.btn_cancel = ttk.Button(self.frame_controls, text="Cancel", command=self.reset_state)
         
         ttk.Label(right_frame, text="Operation Log:", font=("Arial", 10)).pack(anchor=tk.W, pady=(15, 5))
         self.txt_log = tk.Text(right_frame, width=30, height=15, state=tk.DISABLED, font=("Arial", 9))
@@ -257,10 +283,18 @@ class ClientUI:
 
     def on_recognize_success(self):
         self.log(f"Identity verified! Welcome {self.current_person}.")
+        self.log("Opening door...")
+        set_angle(90)
         self.log("Align QR code with camera. Auto-scan on server. Click [Finish Scan] when done.")
         self.state = "QR"
         self.scanned_materials.clear()
         self.update_buttons()
+
+    def close_door(self):
+        self.log("Closing door...")
+        set_angle(0)
+        self.log("Door closed. Operation complete.")
+        self.reset_state()
 
     def finish_scan(self):
         if not self.scanned_materials:
