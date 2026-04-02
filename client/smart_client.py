@@ -111,39 +111,47 @@ class ClientUI:
         if not os.path.exists(QR_SYNC_DIR):
             os.makedirs(QR_SYNC_DIR)
             
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, PORT))
-                s.sendall(b"SYNC_MAT")
-                
-                resp = s.recv(1024).decode('utf-8')
-                if resp.startswith("COUNT"):
-                    count = int(resp.split(",")[1])
-                    self.log(f"Server has {count} QR codes.")
+        attempt = 1
+        delay = 2.0
+        while True:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(10.0)
+                    s.connect((HOST, PORT))
+                    s.sendall(b"SYNC_MAT")
                     
-                    for i in range(count):
-                        s.sendall(b"ok")
-                        file_info = s.recv(1024).decode('utf-8').split(",")
-                        if file_info[0] == "FILE":
-                            filename = file_info[1]
-                            filesize = int(file_info[2])
-                            s.sendall(b"ready")
-                            
-                            img_bytes = b""
-                            while len(img_bytes) < filesize:
-                                packet = s.recv(min(256000, filesize - len(img_bytes)))
-                                if not packet:
-                                    break
-                                img_bytes += packet
+                    resp = s.recv(1024).decode('utf-8')
+                    if resp.startswith("COUNT"):
+                        count = int(resp.split(",")[1])
+                        self.log(f"Server has {count} QR codes.")
+                        
+                        for i in range(count):
+                            s.sendall(b"ok")
+                            file_info = s.recv(1024).decode('utf-8').split(",")
+                            if file_info[0] == "FILE":
+                                filename = file_info[1]
+                                filesize = int(file_info[2])
+                                s.sendall(b"ready")
                                 
-                            filepath = os.path.join(QR_SYNC_DIR, filename)
-                            with open(filepath, "wb") as f:
-                                f.write(img_bytes)
-                    self.log("QR Sync completed.")
-                else:
-                    self.log("No sync needed or error.")
-        except Exception as e:
-            self.log(f"Sync failed: {e}")
+                                img_bytes = b""
+                                while len(img_bytes) < filesize:
+                                    packet = s.recv(min(256000, filesize - len(img_bytes)))
+                                    if not packet:
+                                        break
+                                    img_bytes += packet
+                                    
+                                filepath = os.path.join(QR_SYNC_DIR, filename)
+                                with open(filepath, "wb") as f:
+                                    f.write(img_bytes)
+                        self.log("QR Sync completed.")
+                    else:
+                        self.log("No sync needed or error.")
+                break  # 成功，跳出重连循环
+            except Exception as e:
+                self.log(f"Sync failed (attempt {attempt}, next retry in {delay}s): {e}")
+                time.sleep(delay)
+                attempt += 1
+                delay = min(delay * 1.5, 30.0)
 
     def update_buttons(self):
         # Hide dynamic buttons
@@ -231,18 +239,26 @@ class ClientUI:
             
         img_bytes = encoded_image.tobytes()
         person = None
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, PORT))
-                cmd = f"RECOGNIZE,{len(img_bytes)}"
-                s.sendall(cmd.encode('utf-8'))
-                
-                resp = s.recv(1024)
-                if resp == b'ok':
-                    s.sendall(img_bytes)
-                    person = s.recv(1024).decode('utf-8')
-        except Exception as e:
-            self.root.after(0, lambda: self.log(f"Network error: {e}"))
+        attempt = 1
+        delay = 2.0
+        while True:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(10.0)
+                    s.connect((HOST, PORT))
+                    cmd = f"RECOGNIZE,{len(img_bytes)}"
+                    s.sendall(cmd.encode('utf-8'))
+                    
+                    resp = s.recv(1024)
+                    if resp == b'ok':
+                        s.sendall(img_bytes)
+                        person = s.recv(1024).decode('utf-8')
+                break  # 成功，跳出重连循环
+            except Exception as e:
+                self.root.after(0, lambda a=attempt, d=delay, err=e: self.log(f"Network error (attempt {a}, next in {d}s): {err}"))
+                time.sleep(delay)
+                attempt += 1
+                delay = min(delay * 1.5, 30.0)
             
         if person and person != "Unknown" and "Failed" not in person and "No face" not in person:
             self.current_person = person
@@ -259,20 +275,29 @@ class ClientUI:
 
             img_bytes = encoded_image.tobytes()
             
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, PORT))
-                cmd = f"RECOGNIZE_QR,{len(img_bytes)}"
-                s.sendall(cmd.encode('utf-8'))
-                
-                resp = s.recv(1024)
-                if resp == b'ok':
-                    s.sendall(img_bytes)
-                    result = s.recv(1024).decode('utf-8')
-                    # result may be "No QR Detected" or the QR data
-                    if result and "No QR Detected" not in result and "Failed" not in result:
-                        self.root.after(0, lambda r=result: self.handle_qr_result(r))
-        except Exception as e:
-            print(f"QR Recognition Error: {e}")
+            attempt = 1
+            delay = 2.0
+            while True:
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.settimeout(5.0)
+                        s.connect((HOST, PORT))
+                        cmd = f"RECOGNIZE_QR,{len(img_bytes)}"
+                        s.sendall(cmd.encode('utf-8'))
+                        
+                        resp = s.recv(1024)
+                        if resp == b'ok':
+                            s.sendall(img_bytes)
+                            result = s.recv(1024).decode('utf-8')
+                            # result may be "No QR Detected" or the QR data
+                            if result and "No QR Detected" not in result and "Failed" not in result:
+                                self.root.after(0, lambda r=result: self.handle_qr_result(r))
+                    break  # 成功，跳出重连循环
+                except Exception as e:
+                    print(f"QR Recognition Error (attempt {attempt}, next in {delay}s): {e}")
+                    time.sleep(delay)
+                    attempt += 1
+                    delay = min(delay * 1.5, 30.0)
         finally:
             self.is_requesting_qr = False
 
@@ -313,17 +338,25 @@ class ClientUI:
     def do_upload_data(self, materials):
         materials_str = " | ".join(materials)
         success = False
-        try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, PORT))
-                cmd = f"DATA,{self.current_person},{self.current_action},{timestamp},{materials_str}"
-                s.sendall(cmd.encode('utf-8'))
-                result = s.recv(1024).decode('utf-8')
-                self.root.after(0, lambda: self.log(f"Server reply: {result}"))
-                success = True
-        except Exception as e:
-            self.root.after(0, lambda: self.log(f"Upload failed: {e}"))
+        attempt = 1
+        delay = 2.0
+        while True:
+            try:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(10.0)
+                    s.connect((HOST, PORT))
+                    cmd = f"DATA,{self.current_person},{self.current_action},{timestamp},{materials_str}"
+                    s.sendall(cmd.encode('utf-8'))
+                    result = s.recv(1024).decode('utf-8')
+                    self.root.after(0, lambda r=result: self.log(f"Server reply: {r}"))
+                    success = True
+                break  # 成功，跳出重连循环
+            except Exception as e:
+                self.root.after(0, lambda a=attempt, d=delay, err=e: self.log(f"Upload failed (attempt {a}, next in {d}s): {err}"))
+                time.sleep(delay)
+                attempt += 1
+                delay = min(delay * 1.5, 30.0)
             
         if success:
             self.root.after(0, lambda: messagebox.showinfo("Success", f"Material {self.current_action} record saved!"))
