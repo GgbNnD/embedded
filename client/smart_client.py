@@ -30,7 +30,7 @@ def set_angle(angle):
 # 初始化门为关闭状态 (90度)
 set_angle(0)
 
-HOST = '192.168.168.149'
+HOST = '192.168.160.149'
 PORT = 8080
 QR_SYNC_DIR = 'qrcode_sync'
 
