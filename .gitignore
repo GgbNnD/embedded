@@ -2,3 +2,6 @@
 *.png
 *.txt
 *.pyc
+build/
+install/
+log/

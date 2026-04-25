@@ -96,6 +96,27 @@ weights/materials_yolo/best.onnx
 weights/materials_yolo/best.torchscript
 ```
 
+## ROS2 节点
+
+已经新增 ROS2 包 [server/README.md](/home/cells/embedded/server/README.md)，用于把当前 YOLO 推理能力封装成节点。
+
+构建与运行：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+colcon build --packages-select server
+source install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server material_counter_node
+```
+
+用一张本地图片测试：
+
+```bash
+ros2 run server single_image_client --ros-args -p image_path:=/absolute/path/to/image.jpg
+```
+
 ## 默认训练策略
 
 - 采用检测模型，不做实例分割。
