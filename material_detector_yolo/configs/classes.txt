@@ -1,8 +1,0 @@
-# One class name per line
-# Example:
-# c620
-# m3508
-# jetson_nano
-m3508
-cboard
-dmj4310
