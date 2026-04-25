@@ -4,6 +4,8 @@ import numpy as np
 import os
 import face_recognition
 import csv
+import json
+import sys
 from datetime import datetime
 import argparse
 import threading
@@ -12,10 +14,30 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk
 
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+try:
+    from material_detector_yolo.detector import MaterialDetector
+except Exception:
+    MaterialDetector = None
+
 KNOWN_FACES_DIR = 'known'
 LOG_FILE = 'material_log.csv'
+TRANSACTION_LOG_FILE = 'material_transaction_log.csv'
 QR_DIR = 'qrcode'
 TOLERANCE = 0.5
+
+DEFAULT_MATERIAL_MODEL = os.path.join(
+    BASE_DIR,
+    'material_detector_yolo',
+    'artifacts',
+    'yolov8n_material',
+    'weights',
+    'best.pt',
+)
+DEFAULT_MATERIAL_CLASSES = os.path.join(BASE_DIR, 'material_detector_yolo', 'configs', 'classes.txt')
 
 known_faces = []
 known_names = []
@@ -23,6 +45,15 @@ server_socket = None
 server_running = False
 log_callback = None
 image_callback = None
+material_detector = None
+material_config = {
+    'model_path': DEFAULT_MATERIAL_MODEL,
+    'class_path': DEFAULT_MATERIAL_CLASSES,
+    'device': '0',
+    'conf': 0.35,
+    'iou': 0.45,
+    'imgsz': 640,
+}
 
 def log_msg(msg):
     print(msg)
@@ -106,6 +137,135 @@ def register_face(name, img_bytes):
     else:
         return "No face detected, register failed"
 
+
+def _recv_exact(client_socket, total_len):
+    payload = b""
+    while len(payload) < total_len:
+        packet = client_socket.recv(min(256000, total_len - len(payload)))
+        if not packet:
+            break
+        payload += packet
+    return payload
+
+
+def _send_json_payload(client_socket, payload):
+    body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    client_socket.send(f"RESULT,{len(body)}".encode('utf-8'))
+    ack = client_socket.recv(1024)
+    if ack != b'ok':
+        raise ConnectionError(f"Unexpected client ack: {ack!r}")
+    client_socket.sendall(body)
+
+
+def init_material_detector(
+    model_path=None,
+    class_path=None,
+    device='0',
+    conf=0.35,
+    iou=0.45,
+    imgsz=640,
+):
+    global material_detector, material_config
+
+    material_config = {
+        'model_path': model_path or DEFAULT_MATERIAL_MODEL,
+        'class_path': class_path or DEFAULT_MATERIAL_CLASSES,
+        'device': str(device),
+        'conf': float(conf),
+        'iou': float(iou),
+        'imgsz': int(imgsz),
+    }
+
+    if MaterialDetector is None:
+        log_msg('物资检测模块不可用：未安装 material_detector_yolo 依赖。')
+        material_detector = None
+        return
+
+    if not os.path.isfile(material_config['model_path']):
+        log_msg(f"未找到物资检测模型：{material_config['model_path']}")
+        material_detector = None
+        return
+
+    class_path_value = material_config['class_path'] if os.path.isfile(material_config['class_path']) else None
+
+    try:
+        material_detector = MaterialDetector(
+            model_path=material_config['model_path'],
+            class_names=class_path_value,
+            conf_threshold=material_config['conf'],
+            iou_threshold=material_config['iou'],
+            device=material_config['device'],
+            imgsz=material_config['imgsz'],
+        )
+        log_msg(
+            f"物资检测器已加载: model={material_config['model_path']} "
+            f"device={material_detector.device} conf={material_config['conf']} iou={material_config['iou']}"
+        )
+    except Exception as e:
+        material_detector = None
+        log_msg(f"物资检测器加载失败: {e}")
+
+
+def recognize_materials(img_bytes):
+    if material_detector is None:
+        raise RuntimeError('material detector is not initialized')
+    result = material_detector.predict_jpeg_bytes(img_bytes)
+    return {
+        'ok': True,
+        'counts': result.get('counts', {}),
+        'total_objects': result.get('total_objects', 0),
+        'detections': result.get('detections', []),
+        'latency_ms': result.get('latency_ms', 0),
+        'device': result.get('device', 'unknown'),
+    }
+
+
+def save_transaction_log(payload):
+    timestamp = payload.get('timestamp') or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    tx_id = payload.get('tx_id', '')
+    person = payload.get('person', '')
+    expected_action = payload.get('expected_action', '')
+    actual_action = payload.get('actual_action', '')
+    before_counts = payload.get('before_counts', {})
+    after_counts = payload.get('after_counts', {})
+    delta = payload.get('delta', {})
+    detail = payload.get('detail', {})
+    client_id = payload.get('client_id', '')
+
+    file_exists = os.path.isfile(TRANSACTION_LOG_FILE)
+    with open(TRANSACTION_LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow([
+                'Timestamp',
+                'TxID',
+                'Person',
+                'Expected Action',
+                'Actual Action',
+                'Before Counts(JSON)',
+                'After Counts(JSON)',
+                'Delta(JSON)',
+                'Detail(JSON)',
+                'Client ID',
+            ])
+        writer.writerow([
+            timestamp,
+            tx_id,
+            person,
+            expected_action,
+            actual_action,
+            json.dumps(before_counts, ensure_ascii=False),
+            json.dumps(after_counts, ensure_ascii=False),
+            json.dumps(delta, ensure_ascii=False),
+            json.dumps(detail, ensure_ascii=False),
+            client_id,
+        ])
+
+    log_msg(
+        f"交易记录已保存: {timestamp} | {person} | expected={expected_action} "
+        f"actual={actual_action} | delta={json.dumps(delta, ensure_ascii=False)}"
+    )
+
 def save_material_log(timestamp, person, action, material):
     file_exists = os.path.isfile(LOG_FILE)
     try:
@@ -146,13 +306,7 @@ def handle_client(client_socket, client_address):
             if cmd == "RECOGNIZE":
                 total_len = int(cmd_parts[1])
                 client_socket.send(b"ok")
-                
-                img_bytes = b""
-                while len(img_bytes) < total_len:
-                    packet = client_socket.recv(min(256000, total_len - len(img_bytes)))
-                    if not packet:
-                        break
-                    img_bytes += packet
+                img_bytes = _recv_exact(client_socket, total_len)
                     
                 if image_callback:
                     image_callback(img_bytes)
@@ -164,13 +318,7 @@ def handle_client(client_socket, client_address):
             elif cmd == "RECOGNIZE_QR":
                 total_len = int(cmd_parts[1])
                 client_socket.send(b"ok")
-                
-                img_bytes = b""
-                while len(img_bytes) < total_len:
-                    packet = client_socket.recv(min(256000, total_len - len(img_bytes)))
-                    if not packet:
-                        break
-                    img_bytes += packet
+                img_bytes = _recv_exact(client_socket, total_len)
                 
                 # Image callback optional for QR
                 # if image_callback:
@@ -180,17 +328,25 @@ def handle_client(client_socket, client_address):
                 log_msg(f"QR识别请求完成: {result}")
                 client_socket.send(result.encode('utf-8'))
 
+            elif cmd == "DETECT_MATERIALS":
+                total_len = int(cmd_parts[1])
+                client_socket.send(b"ok")
+                img_bytes = _recv_exact(client_socket, total_len)
+
+                try:
+                    result = recognize_materials(img_bytes)
+                    log_msg(f"物资检测完成: total={result.get('total_objects', 0)}")
+                except Exception as e:
+                    result = {'ok': False, 'error': str(e)}
+                    log_msg(f"物资检测失败: {e}")
+
+                _send_json_payload(client_socket, result)
+
             elif cmd == "REGISTER":
                 name = cmd_parts[1]
                 total_len = int(cmd_parts[2])
                 client_socket.send(b"ok")
-                
-                img_bytes = b""
-                while len(img_bytes) < total_len:
-                    packet = client_socket.recv(min(256000, total_len - len(img_bytes)))
-                    if not packet:
-                        break
-                    img_bytes += packet
+                img_bytes = _recv_exact(client_socket, total_len)
                     
                 if image_callback:
                     image_callback(img_bytes)
@@ -206,7 +362,18 @@ def handle_client(client_socket, client_address):
                 material = ",".join(cmd_parts[4:])
                 save_material_log(timestamp, person, action, material)
                 client_socket.send(b"Data Saved")
-                
+
+            elif cmd == "DATA_JSON":
+                total_len = int(cmd_parts[1])
+                client_socket.send(b"ok")
+                payload_bytes = _recv_exact(client_socket, total_len)
+                try:
+                    payload = json.loads(payload_bytes.decode('utf-8'))
+                    save_transaction_log(payload)
+                    client_socket.send(b"Saved")
+                except Exception as e:
+                    client_socket.send(f"Error:{e}".encode('utf-8'))
+                 
             elif cmd == "GEN_QR":
                 mat_name = cmd_parts[1]
                 mat_id = cmd_parts[2]
@@ -276,10 +443,29 @@ def server_loop():
             server_socket.close()
         log_msg("服务器已停止。")
 
+
+def update_detector_settings(model_path, class_path, device, conf, iou, imgsz):
+    init_material_detector(
+        model_path=model_path,
+        class_path=class_path,
+        device=device,
+        conf=conf,
+        iou=iou,
+        imgsz=imgsz,
+    )
+
 def start_server_thread():
     global server_running
     if not server_running:
         server_running = True
+        init_material_detector(
+            model_path=material_config['model_path'],
+            class_path=material_config['class_path'],
+            device=material_config['device'],
+            conf=material_config['conf'],
+            iou=material_config['iou'],
+            imgsz=material_config['imgsz'],
+        )
         threading.Thread(target=server_loop, daemon=True).start()
 
 def stop_server():
@@ -290,7 +476,7 @@ class ServerUI:
     def __init__(self, root):
         self.root = root
         self.root.title("智能物资管理服务器")
-        self.root.geometry("600x450")
+        self.root.geometry("780x580")
         
         global log_callback
         log_callback = self.append_log
@@ -321,6 +507,43 @@ class ServerUI:
         
         self.log_text = tk.Text(tab_server, wrap=tk.WORD, state=tk.DISABLED)
         self.log_text.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        detector_frame = ttk.LabelFrame(tab_server, text="YOLO 物资检测配置")
+        detector_frame.pack(fill=tk.X, pady=6)
+
+        ttk.Label(detector_frame, text="模型路径:").grid(row=0, column=0, padx=5, pady=4, sticky=tk.W)
+        self.entry_det_model = ttk.Entry(detector_frame, width=68)
+        self.entry_det_model.grid(row=0, column=1, padx=5, pady=4, sticky=tk.W)
+        self.entry_det_model.insert(0, material_config['model_path'])
+
+        ttk.Label(detector_frame, text="类别文件:").grid(row=1, column=0, padx=5, pady=4, sticky=tk.W)
+        self.entry_det_classes = ttk.Entry(detector_frame, width=68)
+        self.entry_det_classes.grid(row=1, column=1, padx=5, pady=4, sticky=tk.W)
+        self.entry_det_classes.insert(0, material_config['class_path'])
+
+        ttk.Label(detector_frame, text="设备:").grid(row=2, column=0, padx=5, pady=4, sticky=tk.W)
+        self.entry_det_device = ttk.Entry(detector_frame, width=10)
+        self.entry_det_device.grid(row=2, column=1, padx=(5, 0), pady=4, sticky=tk.W)
+        self.entry_det_device.insert(0, material_config['device'])
+
+        ttk.Label(detector_frame, text="conf:").grid(row=2, column=1, padx=(95, 0), pady=4, sticky=tk.W)
+        self.entry_det_conf = ttk.Entry(detector_frame, width=8)
+        self.entry_det_conf.grid(row=2, column=1, padx=(140, 0), pady=4, sticky=tk.W)
+        self.entry_det_conf.insert(0, str(material_config['conf']))
+
+        ttk.Label(detector_frame, text="iou:").grid(row=2, column=1, padx=(220, 0), pady=4, sticky=tk.W)
+        self.entry_det_iou = ttk.Entry(detector_frame, width=8)
+        self.entry_det_iou.grid(row=2, column=1, padx=(255, 0), pady=4, sticky=tk.W)
+        self.entry_det_iou.insert(0, str(material_config['iou']))
+
+        ttk.Label(detector_frame, text="imgsz:").grid(row=2, column=1, padx=(335, 0), pady=4, sticky=tk.W)
+        self.entry_det_imgsz = ttk.Entry(detector_frame, width=8)
+        self.entry_det_imgsz.grid(row=2, column=1, padx=(385, 0), pady=4, sticky=tk.W)
+        self.entry_det_imgsz.insert(0, str(material_config['imgsz']))
+
+        ttk.Button(detector_frame, text="加载/更新检测器", command=self.ui_apply_detector).grid(
+            row=3, column=1, padx=5, pady=6, sticky=tk.W
+        )
         
         # --- Tab 2: 二维码生成 ---
         tab_qr = ttk.Frame(notebook)
@@ -367,6 +590,29 @@ class ServerUI:
         stop_server()
         self.btn_start.config(state=tk.NORMAL)
         self.btn_stop.config(state=tk.DISABLED)
+
+    def ui_apply_detector(self):
+        model_path = self.entry_det_model.get().strip()
+        class_path = self.entry_det_classes.get().strip()
+        device = self.entry_det_device.get().strip() or '0'
+
+        try:
+            conf = float(self.entry_det_conf.get().strip())
+            iou = float(self.entry_det_iou.get().strip())
+            imgsz = int(self.entry_det_imgsz.get().strip())
+        except ValueError:
+            messagebox.showwarning("警告", "conf/iou/imgsz 参数格式错误")
+            return
+
+        update_detector_settings(
+            model_path=model_path,
+            class_path=class_path,
+            device=device,
+            conf=conf,
+            iou=iou,
+            imgsz=imgsz,
+        )
+        messagebox.showinfo("完成", "物资检测器配置已更新，请查看日志确认是否加载成功")
 
     def ui_generate_qr(self):
         name = self.entry_qr_name.get().strip()
@@ -437,11 +683,32 @@ class ServerUI:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="智能物资管理服务器")
     parser.add_argument('--type', choices=['cli', 'ui'], default='ui', help='运行方式: cli 或 ui')
+    parser.add_argument('--material-model', default=DEFAULT_MATERIAL_MODEL, help='物资检测模型路径 (.pt/.onnx)')
+    parser.add_argument('--material-classes', default=DEFAULT_MATERIAL_CLASSES, help='物资类别文件路径')
+    parser.add_argument('--material-device', default='0', help='物资检测设备，如 0/cpu/cuda:0')
+    parser.add_argument('--material-conf', type=float, default=0.35, help='物资检测置信度阈值')
+    parser.add_argument('--material-iou', type=float, default=0.45, help='物资检测 IoU 阈值')
+    parser.add_argument('--material-imgsz', type=int, default=640, help='物资检测输入尺寸')
     args = parser.parse_args()
+
+    material_config['model_path'] = args.material_model
+    material_config['class_path'] = args.material_classes
+    material_config['device'] = str(args.material_device)
+    material_config['conf'] = float(args.material_conf)
+    material_config['iou'] = float(args.material_iou)
+    material_config['imgsz'] = int(args.material_imgsz)
 
     if args.type == 'cli':
         print("以命令行(CLI)模式运行服务器...")
         load_known_faces()
+        init_material_detector(
+            model_path=material_config['model_path'],
+            class_path=material_config['class_path'],
+            device=material_config['device'],
+            conf=material_config['conf'],
+            iou=material_config['iou'],
+            imgsz=material_config['imgsz'],
+        )
         start_server_thread()
         try:
             while True:
