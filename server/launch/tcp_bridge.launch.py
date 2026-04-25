@@ -1,10 +1,15 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
+            DeclareLaunchArgument("host", default_value="0.0.0.0"),
+            DeclareLaunchArgument("port", default_value="9000"),
+            DeclareLaunchArgument("inventory_csv_path", default_value="~/.ros/server/inventory_records.csv"),
             Node(
                 package="server",
                 executable="material_counter_node",
@@ -33,6 +38,13 @@ def generate_launch_description() -> LaunchDescription:
                 executable="tcp_bridge_node",
                 name="tcp_bridge_server",
                 output="screen",
+                parameters=[
+                    {
+                        "host": LaunchConfiguration("host"),
+                        "port": LaunchConfiguration("port"),
+                        "inventory_csv_path": LaunchConfiguration("inventory_csv_path"),
+                    }
+                ],
             ),
         ]
     )

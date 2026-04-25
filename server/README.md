@@ -1,101 +1,311 @@
 # server
 
-`server` is a ROS 2 package that provides:
+`server` 是一个 ROS 2 Python 包，负责三件事：
 
-- YOLO-based material counting
-- face recognition against a local face database
-- a TCP bridge node for remote clients
+- 物资图片识别与数量统计
+- 人脸图片识别
+- 通过 TCP 对外提供统一接口，并把出入库记录写入 CSV
 
-## Nodes
+它适合部署在“服务端电脑”上运行。`client` 包通过 TCP 连接到这里，不需要和 `server` 机器做跨机器 ROS 通信。
+
+## 1. 功能概览
+
+包内主要节点：
 
 - `material_counter_node`
-  - subscribes to `sensor_msgs/msg/Image`
-  - runs YOLO inference
-  - publishes counts as JSON on `std_msgs/msg/String`
-  - can optionally publish an annotated image
-
+  - 订阅 `sensor_msgs/msg/Image`
+  - 调用 YOLO 模型识别物资
+  - 在 `std_msgs/msg/String` 中发布 JSON 结果
 - `face_recognize_node`
-  - subscribes to `sensor_msgs/msg/Image`
-  - preloads known face encodings from `server/assets/known_face/`
-  - publishes recognition results as JSON on `std_msgs/msg/String`
-  - can optionally publish an annotated image
-
+  - 订阅 `sensor_msgs/msg/Image`
+  - 使用 `server/assets/known_face/` 中的已知人脸做人脸识别
+  - 在 `std_msgs/msg/String` 中发布 JSON 结果
 - `tcp_bridge_node`
-  - serves TCP clients on `0.0.0.0:9000` by default
-  - accepts length-prefixed JSON requests
-  - forwards material/face image requests into ROS topics
-  - waits for existing ROS result topics and returns them to the TCP client
-  - stores inventory in/out records into a CSV file
+  - 监听 TCP 端口
+  - 接收客户端发来的 `face_image`、`material_image`、`inventory_record`
+  - 将图片请求转给上面两个识别节点
+  - 将 inventory 记录追加写入 CSV
+
+辅助测试节点：
 
 - `single_image_client`
-  - publishes one image to `/material_counter/image`
-  - listens on `/material_counter/counts`
-
+  - 本地发一张物资图到 `/material_counter/image`
+  - 用于单独验证物资识别
 - `face_recognize_client`
-  - publishes one image to `/face_recognize/image`
-  - listens on `/face_recognize/result`
+  - 本地发一张人脸图到 `/face_recognize/image`
+  - 用于单独验证人脸识别
 
-## Default Topics
+## 2. 目录与依赖
 
-- material input image: `/material_counter/image`
-- material output counts: `/material_counter/counts`
-- material annotated image: `/material_counter/annotated_image`
-- face input image: `/face_recognize/image`
-- face output result: `/face_recognize/result`
-- face annotated image: `/face_recognize/annotated_image`
+关键路径：
 
-## Build
+- 模型权重：`weights/materials_yolo/best.pt`
+- 已知人脸库：`server/assets/known_face/`
+- 物资识别节点：`server/server/material_counter_node.py`
+- 人脸识别节点：`server/server/face_recognize_node.py`
+- TCP 节点：`server/server/tcp_bridge_node.py`
+- 一键启动：`server/launch/tcp_bridge.launch.py`
+
+依赖环境：
+
+- ROS 2 Humble
+- `alg` conda 环境
+- `ultralytics`
+- `face_recognition`
+- `opencv-python`
+
+## 3. 构建
+
+在工作区根目录执行：
 
 ```bash
 conda activate alg
 source /opt/ros/humble/setup.bash
 colcon build --packages-select server
 source install/setup.bash
+```
+
+如果只在单机或单服务器内部运行 ROS 节点，推荐再加：
+
+```bash
 export ROS_LOCALHOST_ONLY=1
 ```
 
-## Run
+说明：
 
-Start the material counting node:
+- 即使 `ROS_LOCALHOST_ONLY=1`，`tcp_bridge_node` 仍然可以对外监听 TCP 端口。
+- 因为 `client` 和 `server` 之间走的是 TCP，不走跨机器 ROS。
 
-```bash
-ros2 run server material_counter_node
-```
+## 4. 快速启动
 
-Start the face recognition node:
+### 4.1 默认一键启动
 
-```bash
-ros2 run server face_recognize_node
-```
-
-Start only the TCP bridge node:
-
-```bash
-ros2 run server tcp_bridge_node
-```
-
-Start all three together:
+直接启动三个核心节点：
 
 ```bash
 ros2 launch server tcp_bridge.launch.py
 ```
 
-Send one image and print the material result:
+这个 launch 使用的是默认参数：
+
+- 物资识别模型：自动寻找 `weights/materials_yolo/best.pt`
+- 人脸库：自动寻找 `server/assets/known_face/`
+- TCP 监听地址：`0.0.0.0`
+- TCP 监听端口：`9000`
+- inventory CSV：`~/.ros/server/inventory_records.csv`
+
+### 4.2 在 launch 中直接指定端口
+
+例如把 TCP 端口改成 `9100`：
 
 ```bash
-ros2 run server single_image_client --ros-args -p image_path:=/absolute/path/to/image.jpg
+ros2 launch server tcp_bridge.launch.py port:=9100
 ```
 
-Send one image to the face recognition node:
+也可以同时指定监听地址和 CSV 路径：
 
 ```bash
-ros2 run server face_recognize_client --ros-args \
-  -p image_path:=/absolute/path/to/image.jpg
+ros2 launch server tcp_bridge.launch.py \
+  host:=0.0.0.0 \
+  port:=9100 \
+  inventory_csv_path:=/data/inventory_records.csv
 ```
 
-## ROS Result Payloads
+### 4.3 分开启动
 
-Material counting result:
+如果你想分别看日志，或者想单独重启某一个节点，可以分别开三个终端：
+
+终端 1：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+source /home/cells/embedded/install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server material_counter_node
+```
+
+终端 2：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+source /home/cells/embedded/install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server face_recognize_node
+```
+
+终端 3：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+source /home/cells/embedded/install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server tcp_bridge_node
+```
+
+## 5. 如何指定 TCP 通信地址和端口
+
+推荐优先用 launch 方式传参数；如果你只想单独启动 `tcp_bridge_node`，也可以继续用 `ros2 run`。
+
+### 5.1 指定监听地址和端口
+
+例如把 server 改为监听 `0.0.0.0:9100`：
+
+launch 方式：
+
+```bash
+ros2 launch server tcp_bridge.launch.py \
+  host:=0.0.0.0 \
+  port:=9100
+```
+
+或 `ros2 run` 方式：
+
+```bash
+ros2 run server tcp_bridge_node --ros-args \
+  -p host:=0.0.0.0 \
+  -p port:=9100
+```
+
+如果只想绑定某一块网卡的 IP，也可以：
+
+launch 方式：
+
+```bash
+ros2 launch server tcp_bridge.launch.py \
+  host:=192.168.1.20 \
+  port:=9100
+```
+
+或 `ros2 run` 方式：
+
+```bash
+ros2 run server tcp_bridge_node --ros-args \
+  -p host:=192.168.1.20 \
+  -p port:=9100
+```
+
+### 5.2 指定 inventory CSV 路径
+
+launch 方式：
+
+```bash
+ros2 launch server tcp_bridge.launch.py \
+  inventory_csv_path:=/data/inventory_records.csv
+```
+
+或 `ros2 run` 方式：
+
+```bash
+ros2 run server tcp_bridge_node --ros-args \
+  -p inventory_csv_path:=/data/inventory_records.csv
+```
+
+### 5.3 同时指定端口和 CSV 路径
+
+launch 方式：
+
+```bash
+ros2 launch server tcp_bridge.launch.py \
+  host:=0.0.0.0 \
+  port:=9100 \
+  inventory_csv_path:=/data/inventory_records.csv
+```
+
+或 `ros2 run` 方式：
+
+```bash
+ros2 run server tcp_bridge_node --ros-args \
+  -p host:=0.0.0.0 \
+  -p port:=9100 \
+  -p inventory_csv_path:=/data/inventory_records.csv
+```
+
+### 5.4 检查端口是否真的监听成功
+
+```bash
+ss -ltnp | grep 9100
+```
+
+如果没有输出，通常说明：
+
+- 节点没有成功启动
+- 端口被别的程序占用
+- 绑定地址写错了
+
+## 6. 常用节点参数
+
+### 6.1 `material_counter_node`
+
+| 参数 | 默认值 | 说明 |
+|---|---:|---|
+| `model_path` | 自动查找 `weights/materials_yolo/best.pt` | YOLO 权重路径 |
+| `device` | `""` | 推理设备；例如 `0` 表示 GPU 0，空字符串表示自动/默认 |
+| `conf_threshold` | `0.25` | 检测阈值 |
+| `image_topic` | `/material_counter/image` | 输入图像 topic |
+| `counts_topic` | `/material_counter/counts` | 输出计数 JSON topic |
+| `annotated_image_topic` | `/material_counter/annotated_image` | 标注图输出 topic |
+| `publish_annotated_image` | `False` | 是否发布标注图 |
+
+示例：
+
+```bash
+ros2 run server material_counter_node --ros-args \
+  -p device:=0 \
+  -p conf_threshold:=0.3 \
+  -p publish_annotated_image:=true
+```
+
+### 6.2 `face_recognize_node`
+
+| 参数 | 默认值 | 说明 |
+|---|---:|---|
+| `known_face_dir` | 自动查找 `server/assets/known_face` | 已知人脸目录 |
+| `tolerance` | `0.45` | 人脸匹配阈值 |
+| `detection_model` | `hog` | `hog` 或 `cnn` |
+| `unknown_label` | `unknown` | 未识别命中的标签 |
+| `image_topic` | `/face_recognize/image` | 输入图像 topic |
+| `result_topic` | `/face_recognize/result` | 识别结果 JSON topic |
+| `annotated_image_topic` | `/face_recognize/annotated_image` | 标注图 topic |
+| `publish_annotated_image` | `False` | 是否发布标注图 |
+
+示例：
+
+```bash
+ros2 run server face_recognize_node --ros-args \
+  -p tolerance:=0.4 \
+  -p detection_model:=hog
+```
+
+### 6.3 `tcp_bridge_node`
+
+| 参数 | 默认值 | 说明 |
+|---|---:|---|
+| `host` | `0.0.0.0` | TCP 监听地址 |
+| `port` | `9000` | TCP 监听端口 |
+| `request_timeout_sec` | `15.0` | 等待识别结果超时 |
+| `material_image_topic` | `/material_counter/image` | 转发物资图的 topic |
+| `material_result_topic` | `/material_counter/counts` | 读取物资结果的 topic |
+| `face_image_topic` | `/face_recognize/image` | 转发人脸图的 topic |
+| `face_result_topic` | `/face_recognize/result` | 读取人脸结果的 topic |
+| `inventory_csv_path` | `~/.ros/server/inventory_records.csv` | CSV 落盘路径 |
+
+## 7. ROS 内部接口
+
+默认 topic：
+
+- `/material_counter/image`
+- `/material_counter/counts`
+- `/material_counter/annotated_image`
+- `/face_recognize/image`
+- `/face_recognize/result`
+- `/face_recognize/annotated_image`
+
+结果消息类型都是 `std_msgs/msg/String`，内容为 JSON。
+
+### 7.1 物资识别结果示例
 
 ```json
 {
@@ -110,7 +320,7 @@ Material counting result:
 }
 ```
 
-Face recognition result:
+### 7.2 人脸识别结果示例
 
 ```json
 {
@@ -136,24 +346,20 @@ Face recognition result:
 }
 ```
 
-## TCP Protocol
+## 8. TCP 协议
 
-The TCP bridge uses:
+`tcp_bridge_node` 使用长度前缀协议：
 
-- one TCP connection can carry multiple requests
-- each message is `4-byte big-endian length prefix + UTF-8 JSON body`
-- every request has:
-  - `type`
-  - optional `request_id`
-  - `payload`
+- 一条 TCP 连接可以连续发送多条请求
+- 每条消息格式为：`4 字节大端长度 + UTF-8 JSON`
 
-Supported request types:
+支持的 `type`：
 
 - `material_image`
 - `face_image`
 - `inventory_record`
 
-### Image Request
+### 8.1 图片请求
 
 ```json
 {
@@ -166,9 +372,9 @@ Supported request types:
 }
 ```
 
-`face_image` uses the same payload shape.
+`face_image` 的 `payload` 完全相同，只是 `type` 不同。
 
-### Inventory Request
+### 8.2 inventory 请求
 
 ```json
 {
@@ -186,9 +392,13 @@ Supported request types:
 }
 ```
 
-`action` accepts `入库`, `出库`, `in`, or `out`. It is normalized to Chinese before writing the CSV.
+注意：
 
-### Success Response
+- `action` 只接受 `入库`、`出库`、`in`、`out`
+- `items` 必须是非空数组
+- 每个 item 至少要有 `name` 和 `quantity`
+
+### 8.3 成功响应
 
 ```json
 {
@@ -207,9 +417,7 @@ Supported request types:
 }
 ```
 
-`face_image_result` wraps the face recognition ROS JSON. `inventory_record_result` returns the CSV path, rows written, and server receive time.
-
-### Error Response
+### 8.4 失败响应
 
 ```json
 {
@@ -223,7 +431,7 @@ Supported request types:
 }
 ```
 
-Common error codes include:
+常见错误码：
 
 - `INVALID_JSON`
 - `INVALID_REQUEST`
@@ -235,15 +443,15 @@ Common error codes include:
 - `DUPLICATE_REQUEST_ID`
 - `TIMEOUT`
 
-## Inventory CSV
+## 9. CSV 输出
 
-Default CSV path:
+默认 CSV 路径：
 
 ```text
 ~/.ros/server/inventory_records.csv
 ```
 
-CSV columns:
+列结构：
 
 - `request_id`
 - `record_time`
@@ -253,16 +461,97 @@ CSV columns:
 - `quantity`
 - `received_at`
 
-Each material item is written as one CSV row so a single request may expand into multiple rows.
+写入规则：
 
-## Minimal Python TCP Client Example
+- 一条物资一行
+- 一个 inventory 请求里如果有多个物资，会展开成多行
+- 如果 CSV 不存在，会自动创建并写表头
+
+## 10. 单独测试识别节点
+
+### 10.1 测试物资识别
+
+先启动：
+
+```bash
+ros2 run server material_counter_node
+```
+
+再发一张图：
+
+```bash
+ros2 run server single_image_client --ros-args \
+  -p image_path:=/absolute/path/to/image.jpg
+```
+
+### 10.2 测试人脸识别
+
+先启动：
+
+```bash
+ros2 run server face_recognize_node
+```
+
+再发一张图：
+
+```bash
+ros2 run server face_recognize_client --ros-args \
+  -p image_path:=/absolute/path/to/face.jpg
+```
+
+## 11. 两机联调示例
+
+假设：
+
+- server 电脑 IP：`192.168.1.20`
+- server 监听端口：`9100`
+- client 电脑稍后会连到 `192.168.1.20:9100`
+
+### 11.1 在 server 电脑上启动
+
+终端 1：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+source /home/cells/embedded/install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server material_counter_node
+```
+
+终端 2：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+source /home/cells/embedded/install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server face_recognize_node
+```
+
+终端 3：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+source /home/cells/embedded/install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server tcp_bridge_node --ros-args \
+  -p host:=0.0.0.0 \
+  -p port:=9100 \
+  -p inventory_csv_path:=/data/inventory_records.csv
+```
+
+### 11.2 在 client 电脑上连接
+
+见 [client/README.md](/home/cells/embedded/client/README.md) 中的 `server_host` / `server_port` 配置方法。
+
+## 12. 最小 Python TCP 示例
 
 ```python
-import base64
 import json
 import socket
 import struct
-from pathlib import Path
 
 body = {
     "type": "inventory_record",
@@ -286,3 +575,37 @@ with socket.create_connection(("127.0.0.1", 9000)) as sock:
     response = sock.recv(length)
     print(json.loads(response.decode("utf-8")))
 ```
+
+## 13. 常见问题
+
+### 13.1 client 连不上 server
+
+先检查：
+
+- `tcp_bridge_node` 是否真的启动
+- `host` 和 `port` 是否与 client 配置一致
+- server 机器防火墙是否放通该端口
+
+常用检查命令：
+
+```bash
+ss -ltnp | grep 9000
+```
+
+### 13.2 人脸识别总是 `unknown`
+
+检查：
+
+- `server/assets/known_face/` 里是否放了正确的人脸底库
+- 底库图片是否能正确提取到人脸
+- 识别图角度、光照、清晰度是否足够
+- 是否需要调小 `tolerance`
+
+### 13.3 物资识别结果不理想
+
+可以尝试：
+
+- 调整 `conf_threshold`
+- 更换拍摄角度
+- 检查模型路径是否真的是当前想用的权重
+- 重新采集/训练数据
