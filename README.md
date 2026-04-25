@@ -117,6 +117,21 @@ ros2 run server material_counter_node
 ros2 run server single_image_client --ros-args -p image_path:=/absolute/path/to/image.jpg
 ```
 
+同一个 `server` 包中还新增了人脸识别节点，默认会在启动时预加载 [server/assets/known_face](/home/cells/embedded/server/assets/known_face)。
+
+启动人脸识别节点：
+
+```bash
+ros2 run server face_recognize_node
+```
+
+发一张图片并接收识别结果：
+
+```bash
+ros2 run server face_recognize_client --ros-args \
+  -p image_path:=/absolute/path/to/image.jpg
+```
+
 ## 默认训练策略
 
 - 采用检测模型，不做实例分割。

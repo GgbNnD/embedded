@@ -23,6 +23,21 @@ def resolve_default_model_path() -> Path:
     raise FileNotFoundError("Unable to locate weights/materials_yolo/best.pt")
 
 
+def resolve_default_known_face_dir() -> Path:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidate = parent / "assets" / "known_face"
+        if candidate.exists():
+            return candidate
+
+    share_dir = Path(get_package_share_directory("server"))
+    packaged_dir = share_dir / "assets" / "known_face"
+    if packaged_dir.exists():
+        return packaged_dir
+
+    raise FileNotFoundError("Unable to locate server/assets/known_face directory")
+
+
 def image_msg_to_bgr(msg: Image) -> np.ndarray:
     channels_by_encoding = {
         "bgr8": 3,

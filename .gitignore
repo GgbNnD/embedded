@@ -5,3 +5,10 @@
 build/
 install/
 log/
+server/build/
+server/install/
+server/log/
+!server/assets/known_face/
+!server/assets/known_face/*.jpg
+!server/assets/known_face/*.jpeg
+!server/assets/known_face/*.png

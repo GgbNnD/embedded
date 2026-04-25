@@ -11,9 +11,9 @@ from std_msgs.msg import String
 from server.image_utils import bgr_to_image_msg, load_bgr_image
 
 
-class SingleImageClient(Node):
+class FaceRecognizeClient(Node):
     def __init__(self) -> None:
-        super().__init__("single_image_client")
+        super().__init__("face_recognize_client")
 
         self.declare_parameter("image_path", "")
         self.declare_parameter("frame_id", "camera")
@@ -31,14 +31,14 @@ class SingleImageClient(Node):
         self.timeout_sec = float(self.get_parameter("timeout_sec").value)
         self.exit_code = 0
 
-        self.publisher = self.create_publisher(Image, "/material_counter/image", 10)
-        self.subscription = self.create_subscription(String, "/material_counter/counts", self.result_callback, 10)
+        self.publisher = self.create_publisher(Image, "/face_recognize/image", 10)
+        self.subscription = self.create_subscription(String, "/face_recognize/result", self.result_callback, 10)
         self.publish_timer = self.create_timer(0.5, self.publish_once)
         self.timeout_timer = self.create_timer(self.timeout_sec, self.handle_timeout)
         self.timeout_timer.cancel()
         self.sent = False
 
-        self.get_logger().info(f"Waiting to publish material image: {self.image_path}")
+        self.get_logger().info(f"Waiting to publish face image: {self.image_path}")
 
     def publish_once(self) -> None:
         if self.sent:
@@ -54,7 +54,7 @@ class SingleImageClient(Node):
         self.sent = True
         self.publish_timer.cancel()
         self.timeout_timer.reset()
-        self.get_logger().info(f"Published image to material counter node: {self.image_path}")
+        self.get_logger().info(f"Published image to face recognition node: {self.image_path}")
 
     def result_callback(self, msg: String) -> None:
         try:
@@ -63,19 +63,19 @@ class SingleImageClient(Node):
             self.get_logger().warn(f"Received non-JSON result: {msg.data}")
             return
 
-        self.get_logger().info(f"Received material count result: {payload}")
+        self.get_logger().info(f"Received face recognition result: {payload}")
         self.exit_code = 0
         rclpy.shutdown()
 
     def handle_timeout(self) -> None:
-        self.get_logger().error("Timed out waiting for material count result")
+        self.get_logger().error("Timed out waiting for face recognition result")
         self.exit_code = 1
         rclpy.shutdown()
 
 
 def main() -> None:
     rclpy.init()
-    node = SingleImageClient()
+    node = FaceRecognizeClient()
     try:
         rclpy.spin(node)
     finally:
