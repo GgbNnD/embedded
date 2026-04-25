@@ -1,0 +1,8 @@
+path: datasets/materials
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: cboard
+  1: dmj4310
+  2: m3508
