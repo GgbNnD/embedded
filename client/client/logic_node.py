@@ -62,7 +62,7 @@ class LogicNode:
         self._pending_inventory_payloads: list[dict[str, Any]] = []
 
         self._state = "idle"
-        self._message = "等待开始操作"
+        self._message = "Ready to start"
         self._person = ""
         self._pre_counts: dict[str, int] = {}
         self._post_counts: dict[str, int] = {}
@@ -88,7 +88,7 @@ class LogicNode:
     def start_operation(self) -> tuple[bool, str]:
         with self._lock:
             if self._state not in {"idle", "success", "error"}:
-                return False, "当前流程正在进行中"
+                return False, "A workflow is already in progress"
 
             self._workflow_token += 1
             self._request_in_flight = False
@@ -106,22 +106,22 @@ class LogicNode:
             self._added_items = []
             self._removed_items = []
             self._state = "recognizing_face"
-            self._message = "正在识别人脸"
+            self._message = "Recognizing face"
 
-        return True, "已开始操作流程"
+        return True, "Workflow started"
 
     def finish_operation(self) -> tuple[bool, str]:
         with self._lock:
             if self._state != "waiting_finish":
-                return False, "当前不在等待完成状态"
+                return False, "The workflow is not waiting for completion"
             if self._request_in_flight:
-                return False, "当前仍有请求进行中，请稍候"
+                return False, "A request is still in progress"
 
             token = self._workflow_token
             self._finish_record_time = datetime.now().astimezone().isoformat(timespec="seconds")
 
         self._capture_material_snapshot(token, phase="post")
-        return True, "正在抓拍操作后物资"
+        return True, "Capturing the post-operation material snapshot"
 
     def get_status_snapshot(self) -> dict[str, Any]:
         with self._lock:
@@ -152,7 +152,7 @@ class LogicNode:
 
         if state == "recognizing_face":
             if face_deadline_sec is not None and now_sec >= face_deadline_sec and not request_in_flight:
-                self._finish_with_terminal_state("error", "60 秒内未识别到有效人脸", token=token)
+                self._finish_with_terminal_state("error", "Failed to recognize a valid face within 60 seconds", token=token)
                 return
 
             if not request_in_flight and next_face_attempt_sec is not None and now_sec >= next_face_attempt_sec:
@@ -169,12 +169,12 @@ class LogicNode:
                 self._stability_tracker.reset()
                 self._stable_deadline_sec = now_sec + self.stable_timeout_sec
                 self._state = "waiting_camera_stable"
-                self._message = "请保持物资画面稳定，正在等待稳定后抓拍"
+                self._message = "Keep the material view stable while waiting to capture"
             return
 
         if state == "waiting_camera_stable":
             if stable_deadline_sec is not None and now_sec >= stable_deadline_sec and not request_in_flight:
-                self._finish_with_terminal_state("error", "画面长时间不稳定，请重新开始操作", token=token)
+                self._finish_with_terminal_state("error", "The preview stayed unstable for too long, please restart", token=token)
                 return
 
             if not request_in_flight:
@@ -210,7 +210,7 @@ class LogicNode:
 
     def _capture_material_snapshot(self, token: int, *, phase: str) -> None:
         state = "capturing_pre_material" if phase == "pre" else "capturing_post_material"
-        message = "正在抓拍操作前物资" if phase == "pre" else "正在抓拍操作后物资"
+        message = "Capturing the pre-operation material snapshot" if phase == "pre" else "Capturing the post-operation material snapshot"
         self._set_state(state, message, token=token)
         self._start_image_request(
             token=token,
@@ -247,14 +247,14 @@ class LogicNode:
         try:
             capture = self.camera.capture_image(reason)
             if not capture.ok or capture.image is None:
-                raise RuntimeError(f"抓拍失败: {capture.message}")
+                raise RuntimeError(f"Capture failed: {capture.message}")
 
             response = self.tcp_client.send_server_request(
                 request_type=request_type,
                 image=capture.image,
             )
             if not response.ok:
-                raise RuntimeError(f"server {request_type} 请求失败: {response.code} {response.message}".strip())
+                raise RuntimeError(f"Server {request_type} request failed: {response.code} {response.message}".strip())
         except Exception as exc:
             self._end_request(token)
             self._finish_with_terminal_state("error", str(exc), token=token)
@@ -269,7 +269,7 @@ class LogicNode:
             payload = parse_server_response(response_json)
             person = extract_single_known_person(payload)
         except Exception as exc:
-            self._finish_with_terminal_state("error", f"解析人脸识别结果失败: {exc}")
+            self._finish_with_terminal_state("error", f"Failed to parse the face-recognition result: {exc}")
             return
 
         if person is None:
@@ -278,34 +278,34 @@ class LogicNode:
                 if self._face_deadline_sec is not None:
                     remaining_sec = max(0, int(self._face_deadline_sec - time.monotonic()))
                 self._state = "recognizing_face"
-                self._message = f"未识别到唯一已知人脸，继续尝试（剩余 {remaining_sec} 秒）"
+                self._message = f"No single known face detected, retrying ({remaining_sec}s left)"
             return
 
         with self._lock:
             self._person = person
             self._move_until_sec = time.monotonic() + self.settle_delay_sec
             self._state = "waiting_camera_move"
-            self._message = f"识别到 {person}，请将摄像头移动到物资并稍候"
+            self._message = f"Recognized {person}. Move the camera to the materials and wait"
 
     def _handle_material_server_response(self, response_json: str, *, phase: str) -> None:
         try:
             payload = parse_server_response(response_json)
             counts = extract_material_counts(payload)
         except Exception as exc:
-            self._finish_with_terminal_state("error", f"解析物资识别结果失败: {exc}")
+            self._finish_with_terminal_state("error", f"Failed to parse the material-recognition result: {exc}")
             return
 
         if phase == "pre":
             with self._lock:
                 self._pre_counts = counts
                 self._state = "waiting_finish"
-                self._message = "已记录操作前物资，请完成操作后点击完成"
+                self._message = "Pre-operation materials recorded. Click Finish after the operation"
             return
 
         with self._lock:
             self._post_counts = counts
             self._state = "computing_diff"
-            self._message = "正在计算物资变化"
+            self._message = "Computing inventory changes"
         self._finalize_inventory_changes()
 
     def _finalize_inventory_changes(self) -> None:
@@ -316,7 +316,7 @@ class LogicNode:
 
             if not self._added_items and not self._removed_items:
                 self._state = "success"
-                self._message = "未检测到变化"
+                self._message = "No changes detected"
                 self._request_in_flight = False
                 self._pending_inventory_payloads = []
                 return
@@ -332,7 +332,7 @@ class LogicNode:
                 )
 
             self._state = "submitting_inventory"
-            self._message = "正在上传操作记录"
+            self._message = "Uploading inventory records"
             token = self._workflow_token
 
         self._submit_next_inventory_record(token)
@@ -343,7 +343,7 @@ class LogicNode:
                 return
             if not self._pending_inventory_payloads:
                 self._state = "success"
-                self._message = "操作记录已上传"
+                self._message = "Inventory records uploaded"
                 self._request_in_flight = False
                 return
             payload = self._pending_inventory_payloads.pop(0)
@@ -365,7 +365,7 @@ class LogicNode:
                 payload=payload,
             )
             if not response.ok:
-                raise RuntimeError(f"server inventory_record 请求失败: {response.code} {response.message}".strip())
+                raise RuntimeError(f"Server inventory_record request failed: {response.code} {response.message}".strip())
         except Exception as exc:
             self._end_request(token)
             self._finish_with_terminal_state("error", str(exc), token=token)
@@ -379,7 +379,7 @@ class LogicNode:
         try:
             parse_server_response(response_json)
         except Exception as exc:
-            self._finish_with_terminal_state("error", f"解析出入库响应失败: {exc}", token=token)
+            self._finish_with_terminal_state("error", f"Failed to parse the inventory response: {exc}", token=token)
             return
 
         self._submit_next_inventory_record(token)

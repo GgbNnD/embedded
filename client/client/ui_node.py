@@ -17,31 +17,32 @@ from client.tcp_client_node import TcpClientNode
 
 
 STATE_LABELS = {
-    "idle": "待机",
-    "recognizing_face": "识别人脸",
-    "waiting_camera_move": "等待移动摄像头",
-    "waiting_camera_stable": "等待画面稳定",
-    "capturing_pre_material": "抓拍操作前物资",
-    "waiting_finish": "等待点击完成",
-    "capturing_post_material": "抓拍操作后物资",
-    "computing_diff": "计算差异",
-    "submitting_inventory": "上传记录",
-    "success": "成功",
-    "error": "错误",
+    "idle": "Idle",
+    "recognizing_face": "Recognizing Face",
+    "waiting_camera_move": "Waiting For Camera Move",
+    "waiting_camera_stable": "Waiting For Stable Preview",
+    "capturing_pre_material": "Capturing Pre-Operation Materials",
+    "waiting_finish": "Waiting For Finish",
+    "capturing_post_material": "Capturing Post-Operation Materials",
+    "computing_diff": "Computing Changes",
+    "submitting_inventory": "Uploading Records",
+    "success": "Success",
+    "error": "Error",
 }
 
 
 class ClientWindow:
-    def __init__(self, *, camera: CameraNode, logic: LogicNode) -> None:
+    def __init__(self, *, camera: CameraNode, logic: LogicNode, ui_fps: float) -> None:
         self.camera = camera
         self.logic = logic
+        self.refresh_interval_ms = max(1, int(1000 / max(ui_fps, 1.0)))
         self._last_frame_seq = -1
         self._status_payload: dict[str, Any] = self.logic.get_status_snapshot()
         self._local_notice = ""
         self._preview_photo: tk.PhotoImage | None = None
 
         self.root = tk.Tk()
-        self.root.title("统一操作客户端")
+        self.root.title("Embedded Inventory Client")
         self.root.geometry("1100x800")
         self.root.minsize(960, 700)
         self.root.protocol("WM_DELETE_WINDOW", self._handle_close)
@@ -51,7 +52,7 @@ class ClientWindow:
 
         self.preview_label = tk.Label(
             container,
-            text="等待摄像头画面",
+            text="Waiting for camera preview",
             bg="#111111",
             fg="#dddddd",
             relief=tk.SOLID,
@@ -64,8 +65,8 @@ class ClientWindow:
         button_row = tk.Frame(container, pady=10)
         button_row.pack(fill=tk.X)
 
-        self.start_button = tk.Button(button_row, text="开始操作", command=self._handle_start_clicked)
-        self.finish_button = tk.Button(button_row, text="完成", command=self._handle_finish_clicked)
+        self.start_button = tk.Button(button_row, text="Start", command=self._handle_start_clicked)
+        self.finish_button = tk.Button(button_row, text="Finish", command=self._handle_finish_clicked)
         self.start_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
         self.finish_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
 
@@ -85,7 +86,7 @@ class ClientWindow:
         self._schedule_refresh()
 
     def _schedule_refresh(self) -> None:
-        self.root.after(100, self._refresh_view)
+        self.root.after(self.refresh_interval_ms, self._refresh_view)
 
     def _refresh_preview(self) -> None:
         frame, frame_seq = self.camera.get_latest_frame_snapshot()
@@ -122,7 +123,7 @@ class ClientWindow:
         if not success:
             self._local_notice = message
             self._update_status_text()
-            messagebox.showwarning("开始失败", message)
+            messagebox.showwarning("Start Failed", message)
             return
 
         self._local_notice = ""
@@ -135,7 +136,7 @@ class ClientWindow:
         if not success:
             self._local_notice = message
             self._update_status_text()
-            messagebox.showwarning("完成失败", message)
+            messagebox.showwarning("Finish Failed", message)
             return
 
         self._local_notice = ""
@@ -147,25 +148,25 @@ class ClientWindow:
         payload = self._status_payload
         state = str(payload.get("state", "idle"))
         lines = [
-            f"状态: {STATE_LABELS.get(state, state)}",
-            f"提示: {payload.get('message', '')}",
+            f"State: {STATE_LABELS.get(state, state)}",
+            f"Message: {payload.get('message', '')}",
         ]
         if self._local_notice:
-            lines.append(f"本地提示: {self._local_notice}")
+            lines.append(f"Local Notice: {self._local_notice}")
 
         person = str(payload.get("person", ""))
         if person:
-            lines.append(f"人员: {person}")
+            lines.append(f"Person: {person}")
 
         pre_counts = payload.get("pre_counts", {})
         post_counts = payload.get("post_counts", {})
         added_items = payload.get("added_items", [])
         removed_items = payload.get("removed_items", [])
 
-        lines.append(f"操作前物资: {summarize_counts(pre_counts if isinstance(pre_counts, dict) else {})}")
-        lines.append(f"操作后物资: {summarize_counts(post_counts if isinstance(post_counts, dict) else {})}")
-        lines.append(f"增加项: {summarize_items(added_items if isinstance(added_items, list) else [])}")
-        lines.append(f"减少项: {summarize_items(removed_items if isinstance(removed_items, list) else [])}")
+        lines.append(f"Pre-Operation Materials: {summarize_counts(pre_counts if isinstance(pre_counts, dict) else {})}")
+        lines.append(f"Post-Operation Materials: {summarize_counts(post_counts if isinstance(post_counts, dict) else {})}")
+        lines.append(f"Added Items: {summarize_items(added_items if isinstance(added_items, list) else [])}")
+        lines.append(f"Removed Items: {summarize_items(removed_items if isinstance(removed_items, list) else [])}")
 
         self.status_view.configure(state=tk.NORMAL)
         self.status_view.delete("1.0", tk.END)
@@ -237,7 +238,7 @@ def main(argv: list[str] | None = None) -> None:
         tcp_client.close()
         camera.stop()
     try:
-        window = ClientWindow(camera=camera, logic=logic)
+        window = ClientWindow(camera=camera, logic=logic, ui_fps=config.fps)
         window.mainloop()
     except tk.TclError as exc:
         raise RuntimeError(

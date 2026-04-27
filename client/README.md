@@ -91,6 +91,7 @@ embedded-client \
 ```bash
 embedded-client \
   --camera-backend rpicam \
+  --fps 5 \
   --server-host 192.168.1.20 \
   --server-port 9100
 ```
@@ -112,7 +113,7 @@ python scripts/run_client \
 | `--camera-index` | `0` | OpenCV 摄像头设备号，仅 `opencv` 后端生效 |
 | `--width` | `1280` | 采集宽度 |
 | `--height` | `720` | 采集高度 |
-| `--fps` | `15` | 预览帧率 |
+| `--fps` | `5` | Capture and preview FPS |
 | `--rpicam-executable` | `rpicam-still` | `rpicam` 命令名或绝对路径 |
 | `--rpicam-timeout-ms` | `1` | 单次 `rpicam` 抓图等待时间 |
 | `--server-host` | `127.0.0.1` | server TCP 地址 |
@@ -126,6 +127,12 @@ python scripts/run_client \
 | `--stable-hold-sec` | `1.0` | 需要持续稳定多久才算稳像成功 |
 | `--stability-threshold` | `3.0` | 灰度均值变化阈值 |
 | `--stable-timeout-sec` | `8.0` | 稳像阶段最长等待时间 |
+
+例如，如果你想把预览和采集目标帧率改成 8 FPS：
+
+```bash
+embedded-client --fps 8
+```
 
 ## 6. 调试命令
 

@@ -85,13 +85,13 @@ def compute_inventory_changes(
 
 def summarize_items(items: list[dict[str, Any]]) -> str:
     if not items:
-        return "无"
+        return "None"
     return ", ".join(f"{item['name']} x{item['quantity']}" for item in items)
 
 
 def summarize_counts(counts: dict[str, int]) -> str:
     if not counts:
-        return "无"
+        return "None"
     return ", ".join(f"{name}: {quantity}" for name, quantity in sorted(counts.items()))
 
 

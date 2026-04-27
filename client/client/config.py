@@ -10,7 +10,7 @@ class ClientConfig:
     camera_backend: str = "auto"
     width: int = 1280
     height: int = 720
-    fps: float = 15.0
+    fps: float = 5.0
     rpicam_executable: str = "rpicam-still"
     rpicam_timeout_ms: int = 1
     reopen_interval_sec: float = 2.0
@@ -47,7 +47,7 @@ def build_argument_parser(
         )
         parser.add_argument("--width", type=int, default=1280, help="Capture width")
         parser.add_argument("--height", type=int, default=720, help="Capture height")
-        parser.add_argument("--fps", type=float, default=15.0, help="Preview FPS")
+        parser.add_argument("--fps", type=float, default=5.0, help="Preview and capture FPS")
         parser.add_argument("--rpicam-executable", default="rpicam-still", help="rpicam executable name or path")
         parser.add_argument("--rpicam-timeout-ms", type=int, default=1, help="Single rpicam capture timeout in ms")
         parser.add_argument("--reopen-interval-sec", type=float, default=2.0, help="Retry interval after camera failure")
