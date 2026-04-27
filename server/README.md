@@ -92,7 +92,7 @@ ros2 launch server tcp_bridge.launch.py
 - 人脸库：自动寻找 `server/assets/known_face/`
 - TCP 监听地址：`0.0.0.0`
 - TCP 监听端口：`9000`
-- inventory CSV：`~/.ros/server/inventory_records.csv`
+- inventory CSV：自动保存到 `server/assets/inventory_records.csv`
 
 ### 4.2 在 launch 中直接指定端口
 
@@ -290,7 +290,7 @@ ros2 run server face_recognize_node --ros-args \
 | `material_result_topic` | `/material_counter/counts` | 读取物资结果的 topic |
 | `face_image_topic` | `/face_recognize/image` | 转发人脸图的 topic |
 | `face_result_topic` | `/face_recognize/result` | 读取人脸结果的 topic |
-| `inventory_csv_path` | `~/.ros/server/inventory_records.csv` | CSV 落盘路径 |
+| `inventory_csv_path` | `auto` | 默认自动解析到 `server/assets/inventory_records.csv`；也可手动指定绝对路径 |
 
 ## 7. ROS 内部接口
 
@@ -448,7 +448,7 @@ ros2 run server face_recognize_node --ros-args \
 默认 CSV 路径：
 
 ```text
-~/.ros/server/inventory_records.csv
+server/assets/inventory_records.csv
 ```
 
 列结构：

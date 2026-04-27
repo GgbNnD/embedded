@@ -16,7 +16,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
-from server.image_utils import bgr_to_image_msg
+from server.image_utils import bgr_to_image_msg, resolve_default_inventory_csv_path
 from server.tcp_protocol import (
     ConnectionClosedError,
     InventoryRecord,
@@ -58,12 +58,16 @@ class TcpBridgeNode(Node):
         self.declare_parameter("material_result_topic", "/material_counter/counts")
         self.declare_parameter("face_image_topic", "/face_recognize/image")
         self.declare_parameter("face_result_topic", "/face_recognize/result")
-        self.declare_parameter("inventory_csv_path", "~/.ros/server/inventory_records.csv")
+        self.declare_parameter("inventory_csv_path", "auto")
 
         self.host = str(self.get_parameter("host").value)
         self.port = int(self.get_parameter("port").value)
         self.request_timeout_sec = float(self.get_parameter("request_timeout_sec").value)
-        self.inventory_csv_path = Path(self.get_parameter("inventory_csv_path").value).expanduser().resolve()
+        inventory_csv_path_value = str(self.get_parameter("inventory_csv_path").value).strip()
+        if not inventory_csv_path_value or inventory_csv_path_value == "auto":
+            self.inventory_csv_path = resolve_default_inventory_csv_path()
+        else:
+            self.inventory_csv_path = Path(inventory_csv_path_value).expanduser().resolve()
 
         material_image_topic = str(self.get_parameter("material_image_topic").value)
         material_result_topic = str(self.get_parameter("material_result_topic").value)

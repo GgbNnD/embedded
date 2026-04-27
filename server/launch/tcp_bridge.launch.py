@@ -9,7 +9,7 @@ def generate_launch_description() -> LaunchDescription:
         [
             DeclareLaunchArgument("host", default_value="0.0.0.0"),
             DeclareLaunchArgument("port", default_value="9000"),
-            DeclareLaunchArgument("inventory_csv_path", default_value="~/.ros/server/inventory_records.csv"),
+            DeclareLaunchArgument("inventory_csv_path", default_value="auto"),
             Node(
                 package="server",
                 executable="material_counter_node",

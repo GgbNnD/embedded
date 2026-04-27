@@ -123,10 +123,10 @@ python scripts/run_client \
 | `--jpeg-quality` | `90` | 发图时 JPEG 压缩质量 |
 | `--face-retry-interval-sec` | `1.0` | 人脸识别重试周期 |
 | `--face-timeout-sec` | `60.0` | 人脸识别总超时 |
-| `--settle-delay-sec` | `3.5` | 识别人脸后等待移动摄像头的时间 |
-| `--stable-hold-sec` | `1.0` | 需要持续稳定多久才算稳像成功 |
-| `--stability-threshold` | `3.0` | 灰度均值变化阈值 |
-| `--stable-timeout-sec` | `8.0` | 稳像阶段最长等待时间 |
+| `--settle-delay-sec` | `3.5` | Reserved compatibility option from the previous auto-capture flow |
+| `--stable-hold-sec` | `1.0` | Reserved compatibility option from the previous auto-capture flow |
+| `--stability-threshold` | `3.0` | Reserved compatibility option from the previous auto-capture flow |
+| `--stable-timeout-sec` | `8.0` | Reserved compatibility option from the previous auto-capture flow |
 
 例如，如果你想把预览和采集目标帧率改成 8 FPS：
 
@@ -166,8 +166,8 @@ python -m client.tcp_client_node --server-host 192.168.1.20 --server-port 9100
 1. 点击 `开始操作`
 2. 客户端定时抓拍人脸图并发给 `server`
 3. 当 `server` 返回“恰好 1 张脸，且不是 `unknown`”时，记录人员姓名
-4. 等待 `settle_delay_sec`，给操作者留出移动摄像头到物资区域的时间
-5. 进入稳像阶段，等待预览画面稳定
+4. 将摄像头移动到物资区域
+5. 点击 `Capture Materials`
 6. 抓拍操作前物资图并发给 `server`
 7. UI 进入 `等待点击完成`
 8. 用户完成实际操作后点击 `完成`
@@ -209,16 +209,14 @@ embedded-client --camera-backend opencv --camera-index 0
 - 识别结果是 `unknown`
 - `server` 端的人脸库不对
 
-### 8.4 一直过不了稳像阶段
+### 8.4 操作前物资没有被正确抓拍
 
-可以尝试：
+现在操作前物资抓拍改成了手动触发：
 
-```bash
-embedded-client \
-  --settle-delay-sec 4.0 \
-  --stability-threshold 4.0 \
-  --stable-timeout-sec 12.0
-```
+- 先等人脸识别成功
+- 把摄像头移到物资区域
+- 点击 `Capture Materials`
+- 如果取景不对，就调整镜头后再点
 
 ### 8.5 无显示器环境
 

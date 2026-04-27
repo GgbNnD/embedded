@@ -123,6 +123,17 @@ class LogicNode:
         self._capture_material_snapshot(token, phase="post")
         return True, "Capturing the post-operation material snapshot"
 
+    def capture_material_now(self) -> tuple[bool, str]:
+        with self._lock:
+            if self._state != "waiting_camera_move":
+                return False, "The workflow is not waiting for manual material capture"
+            if self._request_in_flight:
+                return False, "A request is still in progress"
+            token = self._workflow_token
+
+        self._capture_material_snapshot(token, phase="pre")
+        return True, "Capturing the pre-operation material snapshot"
+
     def get_status_snapshot(self) -> dict[str, Any]:
         with self._lock:
             return {
@@ -161,44 +172,6 @@ class LogicNode:
                         self._next_face_attempt_sec = now_sec + self.face_retry_interval_sec
                 self._capture_face_attempt(token)
                 return
-
-        if state == "waiting_camera_move" and move_until_sec is not None and now_sec >= move_until_sec:
-            with self._lock:
-                if token != self._workflow_token:
-                    return
-                self._stability_tracker.reset()
-                self._stable_deadline_sec = now_sec + self.stable_timeout_sec
-                self._state = "waiting_camera_stable"
-                self._message = "Keep the material view stable while waiting to capture"
-            return
-
-        if state == "waiting_camera_stable":
-            if stable_deadline_sec is not None and now_sec >= stable_deadline_sec and not request_in_flight:
-                self._finish_with_terminal_state("error", "The preview stayed unstable for too long, please restart", token=token)
-                return
-
-            if not request_in_flight:
-                frame = self.camera.get_latest_frame()
-                if frame is None:
-                    return
-
-                try:
-                    mean_value = compute_gray_mean(frame)
-                except Exception:
-                    return
-
-                with self._lock:
-                    if (
-                        token == self._workflow_token
-                        and self._state == "waiting_camera_stable"
-                        and not self._request_in_flight
-                        and self._stability_tracker.update(mean_value, now_sec)
-                    ):
-                        pass
-                    else:
-                        return
-
-                self._capture_material_snapshot(token, phase="pre")
 
     def _capture_face_attempt(self, token: int) -> None:
         self._start_image_request(
@@ -283,9 +256,10 @@ class LogicNode:
 
         with self._lock:
             self._person = person
-            self._move_until_sec = time.monotonic() + self.settle_delay_sec
+            self._move_until_sec = None
+            self._stable_deadline_sec = None
             self._state = "waiting_camera_move"
-            self._message = f"Recognized {person}. Move the camera to the materials and wait"
+            self._message = f"Recognized {person}. Move the camera to the materials, then click Capture Materials"
 
     def _handle_material_server_response(self, response_json: str, *, phase: str) -> None:
         try:

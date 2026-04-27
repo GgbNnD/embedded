@@ -38,6 +38,21 @@ def resolve_default_known_face_dir() -> Path:
     raise FileNotFoundError("Unable to locate server/assets/known_face directory")
 
 
+def resolve_default_inventory_csv_path() -> Path:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidate = parent / "assets"
+        if candidate.exists():
+            return candidate / "inventory_records.csv"
+
+    share_dir = Path(get_package_share_directory("server"))
+    packaged_dir = share_dir / "assets"
+    if packaged_dir.exists():
+        return packaged_dir / "inventory_records.csv"
+
+    raise FileNotFoundError("Unable to locate server/assets directory for inventory CSV")
+
+
 def image_msg_to_bgr(msg: Image) -> np.ndarray:
     channels_by_encoding = {
         "bgr8": 3,

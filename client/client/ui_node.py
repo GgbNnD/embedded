@@ -19,7 +19,7 @@ from client.tcp_client_node import TcpClientNode
 STATE_LABELS = {
     "idle": "Idle",
     "recognizing_face": "Recognizing Face",
-    "waiting_camera_move": "Waiting For Camera Move",
+    "waiting_camera_move": "Waiting For Manual Material Capture",
     "waiting_camera_stable": "Waiting For Stable Preview",
     "capturing_pre_material": "Capturing Pre-Operation Materials",
     "waiting_finish": "Waiting For Finish",
@@ -66,9 +66,11 @@ class ClientWindow:
         button_row.pack(fill=tk.X)
 
         self.start_button = tk.Button(button_row, text="Start", command=self._handle_start_clicked)
+        self.capture_button = tk.Button(button_row, text="Capture Materials", command=self._handle_capture_clicked)
         self.finish_button = tk.Button(button_row, text="Finish", command=self._handle_finish_clicked)
-        self.start_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
-        self.finish_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
+        self.start_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
+        self.capture_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        self.finish_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 0))
 
         self.status_view = scrolledtext.ScrolledText(container, wrap=tk.WORD, height=12)
         self.status_view.pack(fill=tk.BOTH, expand=False)
@@ -144,6 +146,19 @@ class ClientWindow:
         self._update_status_text()
         self._update_buttons()
 
+    def _handle_capture_clicked(self) -> None:
+        success, message = self.logic.capture_material_now()
+        if not success:
+            self._local_notice = message
+            self._update_status_text()
+            messagebox.showwarning("Capture Failed", message)
+            return
+
+        self._local_notice = ""
+        self._status_payload = self.logic.get_status_snapshot()
+        self._update_status_text()
+        self._update_buttons()
+
     def _update_status_text(self) -> None:
         payload = self._status_payload
         state = str(payload.get("state", "idle"))
@@ -176,13 +191,17 @@ class ClientWindow:
     def _update_buttons(self) -> None:
         state = str(self._status_payload.get("state", "idle"))
         start_state = tk.DISABLED
+        capture_state = tk.DISABLED
         finish_state = tk.DISABLED
         if state in {"idle", "success", "error"}:
             start_state = tk.NORMAL
+        elif state == "waiting_camera_move":
+            capture_state = tk.NORMAL
         elif state == "waiting_finish":
             finish_state = tk.NORMAL
 
         self.start_button.configure(state=start_state)
+        self.capture_button.configure(state=capture_state)
         self.finish_button.configure(state=finish_state)
 
     def _handle_close(self) -> None:
