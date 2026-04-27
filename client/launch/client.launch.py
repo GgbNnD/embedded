@@ -8,9 +8,12 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("camera_index", default_value="0"),
+            DeclareLaunchArgument("camera_backend", default_value="auto"),
             DeclareLaunchArgument("width", default_value="1280"),
             DeclareLaunchArgument("height", default_value="720"),
             DeclareLaunchArgument("fps", default_value="15"),
+            DeclareLaunchArgument("rpicam_executable", default_value="rpicam-still"),
+            DeclareLaunchArgument("rpicam_timeout_ms", default_value="1"),
             DeclareLaunchArgument("server_host", default_value="127.0.0.1"),
             DeclareLaunchArgument("server_port", default_value="9000"),
             DeclareLaunchArgument("connect_timeout_sec", default_value="3.0"),
@@ -30,9 +33,12 @@ def generate_launch_description() -> LaunchDescription:
                 parameters=[
                     {
                         "camera_index": LaunchConfiguration("camera_index"),
+                        "camera_backend": LaunchConfiguration("camera_backend"),
                         "width": LaunchConfiguration("width"),
                         "height": LaunchConfiguration("height"),
                         "fps": LaunchConfiguration("fps"),
+                        "rpicam_executable": LaunchConfiguration("rpicam_executable"),
+                        "rpicam_timeout_ms": LaunchConfiguration("rpicam_timeout_ms"),
                     }
                 ],
             ),

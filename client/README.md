@@ -55,6 +55,7 @@
 - `alg` conda 环境
 - `PyQt5`
 - `opencv-python`
+- 树莓派环境下可执行的 `rpicam-still`
 
 构建命令：
 
@@ -154,7 +155,7 @@ ros2 launch client client.launch.py \
 ros2 launch client client.launch.py \
   server_host:=192.168.1.20 \
   server_port:=9100 \
-  camera_index:=0
+  camera_backend:=rpicam
 ```
 
 ## 6. launch 参数
@@ -164,9 +165,12 @@ ros2 launch client client.launch.py \
 | 参数 | 默认值 | 说明 |
 |---|---:|---|
 | `camera_index` | `0` | 摄像头设备号 |
+| `camera_backend` | `auto` | 相机后端，`auto` 会优先使用 `rpicam-still`，否则回退到 OpenCV |
 | `width` | `1280` | 采集宽度 |
 | `height` | `720` | 采集高度 |
 | `fps` | `15` | 预览帧率 |
+| `rpicam_executable` | `rpicam-still` | `rpicam` 抓图命令 |
+| `rpicam_timeout_ms` | `1` | 单次 `rpicam` 抓图等待时间（毫秒） |
 | `server_host` | `127.0.0.1` | server TCP 地址 |
 | `server_port` | `9000` | server TCP 端口 |
 | `connect_timeout_sec` | `3.0` | 建立 TCP 连接超时 |
@@ -179,13 +183,18 @@ ros2 launch client client.launch.py \
 | `stability_threshold` | `3.0` | 预览帧灰度均值变化阈值 |
 | `stable_timeout_sec` | `8.0` | 稳像阶段最长等待时间 |
 
+说明：
+
+- `camera_index` 只在 `camera_backend:=opencv` 时生效
+- `camera_backend:=auto` 时，如果系统能找到 `rpicam-still`，会默认优先使用它
+
 常见示例：
 
 ```bash
 ros2 launch client client.launch.py \
   server_host:=192.168.1.20 \
   server_port:=9100 \
-  camera_index:=0 \
+  camera_backend:=rpicam \
   settle_delay_sec:=4.0 \
   stable_timeout_sec:=10.0
 ```
@@ -198,10 +207,11 @@ ros2 launch client client.launch.py \
 
 ```bash
 ros2 run client camera_node --ros-args \
-  -p camera_index:=0 \
+  -p camera_backend:=rpicam \
   -p width:=1280 \
   -p height:=720 \
-  -p fps:=15
+  -p fps:=15 \
+  -p rpicam_timeout_ms:=1
 ```
 
 ### 7.2 `tcp_client_node`
@@ -467,13 +477,13 @@ ros2 launch client client.launch.py \
 先试：
 
 ```bash
-ros2 run client camera_node --ros-args -p camera_index:=0
+ros2 run client camera_node --ros-args -p camera_backend:=rpicam
 ```
 
 如果失败：
 
-- 换 `camera_index:=1`
-- 确认系统有没有识别到 USB 摄像头
+- 先直接测试 `rpicam-still -n -t 1 -o test.jpg`
+- 如果你接的是 USB 摄像头，再改成 `camera_backend:=opencv` 后测试 `camera_index:=0` / `1`
 - 确认没有被别的程序占用
 
 ### 11.6 UI 无法显示
