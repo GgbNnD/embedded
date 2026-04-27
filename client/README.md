@@ -7,7 +7,7 @@
 - 调用本地摄像头采集画面
 - 通过 TCP 连接远端 `server`
 - 完成“开始操作 -> 人脸识别 -> 物资前后识别 -> 差异计算 -> 上传记录”的完整流程
-- 提供 PyQt5 图形界面
+- 提供 `tkinter` 图形界面
 
 `server` 端如果仍然保留 ROS2 没问题，`client` 和 `server` 之间只通过 TCP 协议通信。
 
@@ -24,7 +24,7 @@ client/
 │   ├── logic_utils.py      # 纯业务逻辑辅助函数
 │   ├── tcp_client_node.py  # TCP 客户端
 │   ├── tcp_protocol.py     # 长度前缀 JSON 协议
-│   └── ui_node.py          # PyQt5 图形界面与程序入口
+│   └── ui_node.py          # tkinter 图形界面与程序入口
 ├── scripts/
 │   └── run_client          # 仓库内直接启动入口
 ├── test/                   # 单元测试
@@ -39,8 +39,14 @@ client/
 - Python 3.10+
 - `numpy`
 - `opencv-python`
-- `PyQt5`
 - 树莓派环境下可执行的 `rpicam-still`
+- 带 `tkinter` 支持的 Python
+
+如果你用的是 conda Python，缺少 `tkinter` 时可以先装：
+
+```bash
+conda install tk
+```
 
 如果你使用仓库里已有的 conda 环境：
 

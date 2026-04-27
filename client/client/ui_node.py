@@ -1,22 +1,13 @@
 from __future__ import annotations
 
+import base64
 import logging
 import sys
+import tkinter as tk
 from typing import Any
+from tkinter import messagebox, scrolledtext
 
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import (
-    QApplication,
-    QLabel,
-    QMainWindow,
-    QMessageBox,
-    QPushButton,
-    QPlainTextEdit,
-    QVBoxLayout,
-    QWidget,
-    QHBoxLayout,
-)
+import cv2
 
 from client.camera_node import CameraNode
 from client.config import parse_config
@@ -40,60 +31,61 @@ STATE_LABELS = {
 }
 
 
-class ClientWindow(QMainWindow):
+class ClientWindow:
     def __init__(self, *, camera: CameraNode, logic: LogicNode) -> None:
-        super().__init__()
         self.camera = camera
         self.logic = logic
         self._last_frame_seq = -1
         self._status_payload: dict[str, Any] = self.logic.get_status_snapshot()
         self._local_notice = ""
+        self._preview_photo: tk.PhotoImage | None = None
 
-        self.setWindowTitle("统一操作客户端")
-        self.resize(1100, 800)
+        self.root = tk.Tk()
+        self.root.title("统一操作客户端")
+        self.root.geometry("1100x800")
+        self.root.minsize(960, 700)
+        self.root.protocol("WM_DELETE_WINDOW", self._handle_close)
 
-        self.preview_label = QLabel("等待摄像头画面")
-        self.preview_label.setAlignment(Qt.AlignCenter)
-        self.preview_label.setMinimumSize(960, 540)
-        self.preview_label.setStyleSheet("background:#111;color:#ddd;border:1px solid #444;")
+        container = tk.Frame(self.root, padx=12, pady=12)
+        container.pack(fill=tk.BOTH, expand=True)
 
-        self.status_view = QPlainTextEdit()
-        self.status_view.setReadOnly(True)
+        self.preview_label = tk.Label(
+            container,
+            text="等待摄像头画面",
+            bg="#111111",
+            fg="#dddddd",
+            relief=tk.SOLID,
+            borderwidth=1,
+            anchor=tk.CENTER,
+        )
+        self.preview_label.pack(fill=tk.BOTH, expand=True)
+        self.preview_label.configure(width=960, height=540)
 
-        self.start_button = QPushButton("开始操作")
-        self.finish_button = QPushButton("完成")
-        self.start_button.clicked.connect(self._handle_start_clicked)
-        self.finish_button.clicked.connect(self._handle_finish_clicked)
+        button_row = tk.Frame(container, pady=10)
+        button_row.pack(fill=tk.X)
 
-        button_row = QHBoxLayout()
-        button_row.addWidget(self.start_button)
-        button_row.addWidget(self.finish_button)
+        self.start_button = tk.Button(button_row, text="开始操作", command=self._handle_start_clicked)
+        self.finish_button = tk.Button(button_row, text="完成", command=self._handle_finish_clicked)
+        self.start_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
+        self.finish_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.preview_label)
-        layout.addLayout(button_row)
-        layout.addWidget(self.status_view)
+        self.status_view = scrolledtext.ScrolledText(container, wrap=tk.WORD, height=12)
+        self.status_view.pack(fill=tk.BOTH, expand=False)
+        self.status_view.configure(state=tk.DISABLED)
 
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
-
-        self._refresh_timer = QTimer(self)
-        self._refresh_timer.timeout.connect(self._refresh_view)
-        self._refresh_timer.start(100)
-
+        self._schedule_refresh()
         self._update_status_text()
         self._update_buttons()
-
-    def closeEvent(self, event) -> None:  # noqa: N802
-        self._refresh_timer.stop()
-        super().closeEvent(event)
 
     def _refresh_view(self) -> None:
         self._refresh_preview()
         self._status_payload = self.logic.get_status_snapshot()
         self._update_status_text()
         self._update_buttons()
+        self._schedule_refresh()
+
+    def _schedule_refresh(self) -> None:
+        self.root.after(100, self._refresh_view)
 
     def _refresh_preview(self) -> None:
         frame, frame_seq = self.camera.get_latest_frame_snapshot()
@@ -101,24 +93,36 @@ class ClientWindow(QMainWindow):
             return
 
         self._last_frame_seq = frame_seq
-        rgb = frame[:, :, ::-1].copy()
-        qimage = QImage(
-            rgb.tobytes(),
-            rgb.shape[1],
-            rgb.shape[0],
-            rgb.strides[0],
-            QImage.Format_RGB888,
-        ).copy()
-        pixmap = QPixmap.fromImage(qimage)
-        scaled = pixmap.scaled(self.preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.preview_label.setPixmap(scaled)
+        display_frame = self._resize_for_preview(frame)
+        success, encoded = cv2.imencode(".png", display_frame)
+        if not success:
+            return
+
+        png_base64 = base64.b64encode(encoded.tobytes()).decode("ascii")
+        self._preview_photo = tk.PhotoImage(data=png_base64)
+        self.preview_label.configure(image=self._preview_photo, text="")
+
+    def _resize_for_preview(self, frame):
+        label_width = max(self.preview_label.winfo_width(), 960)
+        label_height = max(self.preview_label.winfo_height(), 540)
+        frame_height, frame_width = frame.shape[:2]
+
+        scale = min(label_width / frame_width, label_height / frame_height)
+        scale = max(scale, 0.1)
+        target_width = max(1, int(frame_width * scale))
+        target_height = max(1, int(frame_height * scale))
+        if target_width == frame_width and target_height == frame_height:
+            return frame[:, :, ::-1].copy()
+
+        resized = cv2.resize(frame, (target_width, target_height), interpolation=cv2.INTER_AREA)
+        return resized[:, :, ::-1].copy()
 
     def _handle_start_clicked(self) -> None:
         success, message = self.logic.start_operation()
         if not success:
             self._local_notice = message
             self._update_status_text()
-            QMessageBox.warning(self, "开始失败", message)
+            messagebox.showwarning("开始失败", message)
             return
 
         self._local_notice = ""
@@ -131,7 +135,7 @@ class ClientWindow(QMainWindow):
         if not success:
             self._local_notice = message
             self._update_status_text()
-            QMessageBox.warning(self, "完成失败", message)
+            messagebox.showwarning("完成失败", message)
             return
 
         self._local_notice = ""
@@ -163,19 +167,28 @@ class ClientWindow(QMainWindow):
         lines.append(f"增加项: {summarize_items(added_items if isinstance(added_items, list) else [])}")
         lines.append(f"减少项: {summarize_items(removed_items if isinstance(removed_items, list) else [])}")
 
-        self.status_view.setPlainText("\n".join(lines))
+        self.status_view.configure(state=tk.NORMAL)
+        self.status_view.delete("1.0", tk.END)
+        self.status_view.insert("1.0", "\n".join(lines))
+        self.status_view.configure(state=tk.DISABLED)
 
     def _update_buttons(self) -> None:
         state = str(self._status_payload.get("state", "idle"))
+        start_state = tk.DISABLED
+        finish_state = tk.DISABLED
         if state in {"idle", "success", "error"}:
-            self.start_button.setEnabled(True)
-            self.finish_button.setEnabled(False)
+            start_state = tk.NORMAL
         elif state == "waiting_finish":
-            self.start_button.setEnabled(False)
-            self.finish_button.setEnabled(True)
-        else:
-            self.start_button.setEnabled(False)
-            self.finish_button.setEnabled(False)
+            finish_state = tk.NORMAL
+
+        self.start_button.configure(state=start_state)
+        self.finish_button.configure(state=finish_state)
+
+    def _handle_close(self) -> None:
+        self.root.quit()
+
+    def mainloop(self) -> None:
+        self.root.mainloop()
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -219,24 +232,21 @@ def main(argv: list[str] | None = None) -> None:
     camera.start()
     logic.start()
 
-    app = QApplication(sys.argv if argv is None else ["client-app", *argv])
-    window = ClientWindow(camera=camera, logic=logic)
-    window.show()
-
     def _shutdown() -> None:
         logic.stop()
         tcp_client.close()
         camera.stop()
-
-    app.aboutToQuit.connect(_shutdown)
-
-    exit_code = 0
     try:
-        exit_code = app.exec_()
+        window = ClientWindow(camera=camera, logic=logic)
+        window.mainloop()
+    except tk.TclError as exc:
+        raise RuntimeError(
+            f"Failed to start tkinter UI: {exc}. If this is a headless environment, use embedded-client-camera "
+            "and embedded-client-server for no-GUI checks first."
+        ) from exc
     finally:
         _shutdown()
-
-    sys.exit(exit_code)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
