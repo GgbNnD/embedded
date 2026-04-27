@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
+import logging
 import sys
 from typing import Any
 
-import rclpy
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import (
@@ -18,13 +17,12 @@ from PyQt5.QtWidgets import (
     QWidget,
     QHBoxLayout,
 )
-from rclpy.node import Node
-from sensor_msgs.msg import Image
-from std_msgs.msg import String
-from std_srvs.srv import Trigger
 
-from client.image_utils import image_msg_to_bgr
+from client.camera_node import CameraNode
+from client.config import parse_config
+from client.logic_node import LogicNode
 from client.logic_utils import summarize_counts, summarize_items
+from client.tcp_client_node import TcpClientNode
 
 
 STATE_LABELS = {
@@ -42,71 +40,14 @@ STATE_LABELS = {
 }
 
 
-class UiNode(Node):
-    def __init__(self) -> None:
-        super().__init__("ui_node")
-
-        self.declare_parameter("preview_topic", "/client/camera/preview")
-        self.declare_parameter("status_topic", "/client/logic/status")
-        self.declare_parameter("start_service", "/client/logic/start_operation")
-        self.declare_parameter("finish_service", "/client/logic/finish_operation")
-
-        preview_topic = str(self.get_parameter("preview_topic").value)
-        status_topic = str(self.get_parameter("status_topic").value)
-        start_service = str(self.get_parameter("start_service").value)
-        finish_service = str(self.get_parameter("finish_service").value)
-
-        self.preview_subscription = self.create_subscription(Image, preview_topic, self._preview_callback, 10)
-        self.status_subscription = self.create_subscription(String, status_topic, self._status_callback, 10)
-        self.start_client = self.create_client(Trigger, start_service)
-        self.finish_client = self.create_client(Trigger, finish_service)
-
-        self.window: ClientWindow | None = None
-
-    def _preview_callback(self, msg: Image) -> None:
-        if self.window is not None:
-            self.window.update_preview(msg)
-
-    def _status_callback(self, msg: String) -> None:
-        if self.window is None:
-            return
-
-        try:
-            payload = json.loads(msg.data)
-        except json.JSONDecodeError:
-            payload = {
-                "state": "error",
-                "message": "状态消息解析失败",
-                "person": "",
-                "pre_counts": {},
-                "post_counts": {},
-                "added_items": [],
-                "removed_items": [],
-            }
-        self.window.update_status(payload)
-
-    def call_trigger(self, client, action_name: str) -> tuple[bool, str]:
-        if not client.wait_for_service(timeout_sec=0.0):
-            return False, f"{action_name}服务未就绪"
-
-        future = client.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-        if not future.done():
-            return False, f"{action_name}请求超时"
-
-        try:
-            response = future.result()
-        except Exception as exc:
-            return False, f"{action_name}失败: {exc}"
-
-        return bool(response.success), response.message
-
-
 class ClientWindow(QMainWindow):
-    def __init__(self, node: UiNode) -> None:
+    def __init__(self, *, camera: CameraNode, logic: LogicNode) -> None:
         super().__init__()
-        self.node = node
-        self.node.window = self
+        self.camera = camera
+        self.logic = logic
+        self._last_frame_seq = -1
+        self._status_payload: dict[str, Any] = self.logic.get_status_snapshot()
+        self._local_notice = ""
 
         self.setWindowTitle("统一操作客户端")
         self.resize(1100, 800)
@@ -137,26 +78,30 @@ class ClientWindow(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
-        self._status_payload: dict[str, Any] = {
-            "state": "idle",
-            "message": "等待开始操作",
-            "person": "",
-            "pre_counts": {},
-            "post_counts": {},
-            "added_items": [],
-            "removed_items": [],
-        }
-        self._local_notice = ""
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.timeout.connect(self._refresh_view)
+        self._refresh_timer.start(100)
+
         self._update_status_text()
         self._update_buttons()
 
-    def update_preview(self, msg: Image) -> None:
-        try:
-            image = image_msg_to_bgr(msg)
-        except Exception:
+    def closeEvent(self, event) -> None:  # noqa: N802
+        self._refresh_timer.stop()
+        super().closeEvent(event)
+
+    def _refresh_view(self) -> None:
+        self._refresh_preview()
+        self._status_payload = self.logic.get_status_snapshot()
+        self._update_status_text()
+        self._update_buttons()
+
+    def _refresh_preview(self) -> None:
+        frame, frame_seq = self.camera.get_latest_frame_snapshot()
+        if frame is None or frame_seq == self._last_frame_seq:
             return
 
-        rgb = image[:, :, ::-1].copy()
+        self._last_frame_seq = frame_seq
+        rgb = frame[:, :, ::-1].copy()
         qimage = QImage(
             rgb.tobytes(),
             rgb.shape[1],
@@ -168,25 +113,31 @@ class ClientWindow(QMainWindow):
         scaled = pixmap.scaled(self.preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.preview_label.setPixmap(scaled)
 
-    def update_status(self, payload: dict[str, Any]) -> None:
-        self._status_payload = payload
-        self._local_notice = ""
-        self._update_status_text()
-        self._update_buttons()
-
     def _handle_start_clicked(self) -> None:
-        success, message = self.node.call_trigger(self.node.start_client, "开始操作")
+        success, message = self.logic.start_operation()
         if not success:
             self._local_notice = message
             self._update_status_text()
             QMessageBox.warning(self, "开始失败", message)
+            return
+
+        self._local_notice = ""
+        self._status_payload = self.logic.get_status_snapshot()
+        self._update_status_text()
+        self._update_buttons()
 
     def _handle_finish_clicked(self) -> None:
-        success, message = self.node.call_trigger(self.node.finish_client, "完成")
+        success, message = self.logic.finish_operation()
         if not success:
             self._local_notice = message
             self._update_status_text()
             QMessageBox.warning(self, "完成失败", message)
+            return
+
+        self._local_notice = ""
+        self._status_payload = self.logic.get_status_snapshot()
+        self._update_status_text()
+        self._update_buttons()
 
     def _update_status_text(self) -> None:
         payload = self._status_payload
@@ -216,7 +167,7 @@ class ClientWindow(QMainWindow):
 
     def _update_buttons(self) -> None:
         state = str(self._status_payload.get("state", "idle"))
-        if state == "idle":
+        if state in {"idle", "success", "error"}:
             self.start_button.setEnabled(True)
             self.finish_button.setEnabled(False)
         elif state == "waiting_finish":
@@ -227,25 +178,63 @@ class ClientWindow(QMainWindow):
             self.finish_button.setEnabled(False)
 
 
-def main() -> None:
-    app = QApplication(sys.argv)
-    rclpy.init()
-    node = UiNode()
-    window = ClientWindow(node)
+def main(argv: list[str] | None = None) -> None:
+    config = parse_config(
+        argv,
+        description="Standalone client application for face recognition and inventory flow.",
+        include_camera=True,
+        include_server=True,
+        include_workflow=True,
+    )
+    logging.basicConfig(level=getattr(logging, config.log_level), format="[%(levelname)s] %(name)s: %(message)s")
+
+    camera = CameraNode(
+        camera_index=config.camera_index,
+        camera_backend=config.camera_backend,
+        width=config.width,
+        height=config.height,
+        fps=config.fps,
+        rpicam_executable=config.rpicam_executable,
+        rpicam_timeout_ms=config.rpicam_timeout_ms,
+        reopen_interval_sec=config.reopen_interval_sec,
+    )
+    tcp_client = TcpClientNode(
+        server_host=config.server_host,
+        server_port=config.server_port,
+        connect_timeout_sec=config.connect_timeout_sec,
+        request_timeout_sec=config.request_timeout_sec,
+        jpeg_quality=config.jpeg_quality,
+    )
+    logic = LogicNode(
+        camera=camera,
+        tcp_client=tcp_client,
+        face_retry_interval_sec=config.face_retry_interval_sec,
+        face_timeout_sec=config.face_timeout_sec,
+        settle_delay_sec=config.settle_delay_sec,
+        stable_hold_sec=config.stable_hold_sec,
+        stability_threshold=config.stability_threshold,
+        stable_timeout_sec=config.stable_timeout_sec,
+    )
+
+    camera.start()
+    logic.start()
+
+    app = QApplication(sys.argv if argv is None else ["client-app", *argv])
+    window = ClientWindow(camera=camera, logic=logic)
     window.show()
 
-    spin_timer = QTimer()
-    spin_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0.0) if rclpy.ok() else None)
-    spin_timer.start(30)
+    def _shutdown() -> None:
+        logic.stop()
+        tcp_client.close()
+        camera.stop()
+
+    app.aboutToQuit.connect(_shutdown)
 
     exit_code = 0
     try:
         exit_code = app.exec_()
     finally:
-        spin_timer.stop()
-        node.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
+        _shutdown()
 
     sys.exit(exit_code)
 

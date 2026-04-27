@@ -1,8 +1,0 @@
-string request_type
-sensor_msgs/Image image
-string payload_json
----
-bool ok
-string code
-string message
-string response_json

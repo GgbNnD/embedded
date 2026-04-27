@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "embedded-client"
+version = "0.1.0"
+description = "Standalone client for face/material capture and inventory submission."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "opencv-python",
+  "PyQt5",
+]
+
+[project.scripts]
+embedded-client = "client.ui_node:main"
+embedded-client-camera = "client.camera_node:main"
+embedded-client-server = "client.tcp_client_node:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["client"]
