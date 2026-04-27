@@ -5,6 +5,7 @@
 - 物资图片识别与数量统计
 - 人脸图片识别
 - 通过 TCP 对外提供统一接口，并把出入库记录写入 CSV
+- 读取 CSV 并在本机发布实时 Web 看板
 
 它适合部署在“服务端电脑”上运行。`client` 包通过 TCP 连接到这里，不需要和 `server` 机器做跨机器 ROS 通信。
 
@@ -25,6 +26,10 @@
   - 接收客户端发来的 `face_image`、`material_image`、`inventory_record`
   - 将图片请求转给上面两个识别节点
   - 将 inventory 记录追加写入 CSV
+- `inventory_web_node`
+  - 读取 `inventory_records.csv`
+  - 汇总当前库存、最后出入库人员与时间
+  - 通过本机 HTTP 页面实时展示，并支持查看单个物资详情
 
 辅助测试节点：
 
@@ -44,7 +49,9 @@
 - 物资识别节点：`server/server/material_counter_node.py`
 - 人脸识别节点：`server/server/face_recognize_node.py`
 - TCP 节点：`server/server/tcp_bridge_node.py`
+- Web 看板节点：`server/server/inventory_web_node.py`
 - 一键启动：`server/launch/tcp_bridge.launch.py`
+- 只启动看板：`server/launch/inventory_web.launch.py`
 
 依赖环境：
 
@@ -80,7 +87,7 @@ export ROS_LOCALHOST_ONLY=1
 
 ### 4.1 默认一键启动
 
-直接启动三个核心节点：
+直接启动四个核心节点：
 
 ```bash
 ros2 launch server tcp_bridge.launch.py
@@ -93,6 +100,14 @@ ros2 launch server tcp_bridge.launch.py
 - TCP 监听地址：`0.0.0.0`
 - TCP 监听端口：`9000`
 - inventory CSV：自动保存到 `server/assets/inventory_records.csv`
+- Web 看板监听地址：`127.0.0.1`
+- Web 看板端口：`8600`
+
+启动后可直接在本机打开：
+
+```text
+http://127.0.0.1:8600
+```
 
 ### 4.2 在 launch 中直接指定端口
 
@@ -109,6 +124,18 @@ ros2 launch server tcp_bridge.launch.py \
   host:=0.0.0.0 \
   port:=9100 \
   inventory_csv_path:=/data/inventory_records.csv
+```
+
+如果只想看 CSV 看板，不启动识别和 TCP：
+
+```bash
+ros2 launch server inventory_web.launch.py
+```
+
+也可以自定义本地看板端口：
+
+```bash
+ros2 launch server inventory_web.launch.py port:=8700
 ```
 
 ### 4.3 分开启动
@@ -143,6 +170,16 @@ source /opt/ros/humble/setup.bash
 source /home/cells/embedded/install/setup.bash
 export ROS_LOCALHOST_ONLY=1
 ros2 run server tcp_bridge_node
+```
+
+终端 4：
+
+```bash
+conda activate alg
+source /opt/ros/humble/setup.bash
+source /home/cells/embedded/install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 run server inventory_web_node
 ```
 
 ## 5. 如何指定 TCP 通信地址和端口
@@ -235,6 +272,12 @@ ss -ltnp | grep 9100
 - 端口被别的程序占用
 - 绑定地址写错了
 
+如果你想检查 Web 看板是否真的监听成功，可以把 `9100` 换成 `8600`：
+
+```bash
+ss -ltnp | grep 8600
+```
+
 ## 6. 常用节点参数
 
 ### 6.1 `material_counter_node`
@@ -257,6 +300,39 @@ ros2 run server material_counter_node --ros-args \
   -p conf_threshold:=0.3 \
   -p publish_annotated_image:=true
 ```
+
+### 6.4 `inventory_web_node`
+
+| 参数 | 默认值 | 说明 |
+|---|---:|---|
+| `host` | `127.0.0.1` | Web 看板监听地址，默认仅本机访问 |
+| `port` | `8600` | Web 看板端口 |
+| `inventory_csv_path` | `auto` | 记录 CSV 路径 |
+| `refresh_interval_sec` | `1.0` | 轮询 CSV 的刷新周期 |
+| `board_title` | `嵌入式物资实时看板` | 页面标题 |
+
+示例：
+
+```bash
+ros2 run server inventory_web_node --ros-args \
+  -p host:=127.0.0.1 \
+  -p port:=8700 \
+  -p inventory_csv_path:=/data/inventory_records.csv
+```
+
+## 7. 示例 CSV
+
+仓库里已经放了一份可直接演示的示例数据：
+
+```text
+server/assets/inventory_records.csv
+```
+
+特点：
+
+- 人员更多，便于看最后操作人变化
+- 物资种类更多，便于看汇总效果
+- 字段格式与 `tcp_bridge_node` 当前实际写入的 CSV 一致
 
 ### 6.2 `face_recognize_node`
 
