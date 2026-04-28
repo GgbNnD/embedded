@@ -218,6 +218,64 @@ embedded-client --camera-backend opencv --camera-index 0
 - 点击 `Capture Materials`
 - 如果取景不对，就调整镜头后再点
 
+### 8.5 开机自启日志里提示 `No module named cv2`
+
+这通常不是代码问题，而是“自动启动时使用了另一套 Python”，那套 Python 没装 `opencv-python`。
+
+先在树莓派终端里确认你平时手动能跑通的是哪一个 Python：
+
+```bash
+which python3
+python3 -c "import cv2; print(cv2.__version__)"
+```
+
+如果你用的是虚拟环境或 conda，也可以直接检查那套解释器：
+
+```bash
+/path/to/python -c "import cv2; print(cv2.__version__)"
+```
+
+当前仓库里的自启动脚本会按下面顺序自动选解释器：
+
+1. 环境变量 `CLIENT_PYTHON_BIN`
+2. `client/.venv/bin/python`
+3. `~/miniconda3/envs/alg/bin/python`
+4. `python3`
+
+如果树莓派上的 Python 路径和这些都不同，最直接的做法是编辑：
+
+- [start_client_autostart.sh](/home/cells/embedded/client/scripts/start_client_autostart.sh)
+
+把：
+
+```bash
+DEFAULT_CONDA_PYTHON="${HOME}/miniconda3/envs/alg/bin/python"
+```
+
+改成你的实际 Python 路径，或者在 `~/.config/autostart/embedded-client.desktop` 里改成：
+
+```text
+Exec=env CLIENT_PYTHON_BIN=/your/python/path /home/cells/embedded/client/scripts/start_client_autostart.sh
+```
+
+修改后重启，或先手动执行脚本验证：
+
+```bash
+/home/cells/embedded/client/scripts/start_client_autostart.sh
+```
+
+日志会写到：
+
+```text
+/home/cells/embedded/client/client_autostart.log
+```
+
+日志里现在会额外打印：
+
+- 实际使用的 `PYTHON_BIN`
+- `python --version`
+- `cv2` 是否导入成功
+
 ## 9. 树莓派开机自启
 
 如果你的 `client` 运行的是当前这个 `tkinter` 图形界面，推荐使用“桌面自动启动”而不是普通后台 `systemd` 服务。

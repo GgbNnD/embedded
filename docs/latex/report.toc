@@ -1,0 +1,18 @@
+\contentsline {section}{摘要}{1}{section*.1}%
+\contentsline {section}{\numberline {1}项目背景与需求分析}{3}{section.1}%
+\contentsline {section}{\numberline {2}系统总体设计}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}架构划分}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}模块分工}{4}{subsection.2.2}%
+\contentsline {section}{\numberline {3}系统运行逻辑}{5}{section.3}%
+\contentsline {section}{\numberline {4}关键技术与实现分析}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}图像采集与客户端状态机}{7}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}TCP 协议与分布式解耦}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}物资识别模块（YOLO）}{8}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}人脸识别模块}{9}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}库存差分、CSV 记录与 Web 看板}{9}{subsection.4.5}%
+\contentsline {section}{\numberline {5}结果展示与项目亮点}{10}{section.5}%
+\contentsline {subsection}{\numberline {5.1}训练结果与模型表现}{10}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}单图推理与闭环验证}{12}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}项目亮点归纳}{12}{subsection.5.3}%
+\contentsline {section}{\numberline {6}总结与展望}{13}{section.6}%
+\contentsline {section}{参考资料}{14}{section*.3}%
