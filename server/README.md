@@ -44,7 +44,8 @@
 
 关键路径：
 
-- 模型权重：`weights/materials_yolo/best.pt`
+- 部署默认权重：`weights/materials_yolo/last.pt`
+- 训练评估权重：`weights/materials_yolo/best.pt`
 - 已知人脸库：`server/assets/known_face/`
 - 物资识别节点：`server/server/material_counter_node.py`
 - 人脸识别节点：`server/server/face_recognize_node.py`
@@ -95,7 +96,7 @@ ros2 launch server tcp_bridge.launch.py
 
 这个 launch 使用的是默认参数：
 
-- 物资识别模型：自动寻找 `weights/materials_yolo/best.pt`
+- 物资识别模型：自动优先寻找 `weights/materials_yolo/last.pt`，找不到时回退到 `best.pt`
 - 人脸库：自动寻找 `server/assets/known_face/`
 - TCP 监听地址：`0.0.0.0`
 - TCP 监听端口：`9000`

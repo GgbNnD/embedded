@@ -90,11 +90,13 @@ conda run -n alg python scripts/export.py \
 当前训练完成后整理出的主要产物位于：
 
 ```text
-weights/materials_yolo/best.pt
 weights/materials_yolo/last.pt
+weights/materials_yolo/best.pt
 weights/materials_yolo/best.onnx
 weights/materials_yolo/best.torchscript
 ```
+
+当前 `server` 包默认优先加载 `weights/materials_yolo/last.pt` 做部署推理；`best.pt` 仍保留用于按 mAP 指标挑选的训练评估。
 
 ## ROS2 节点
 

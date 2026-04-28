@@ -30,6 +30,7 @@ class SingleImageClient(Node):
         self.frame_id = self.get_parameter("frame_id").value
         self.timeout_sec = float(self.get_parameter("timeout_sec").value)
         self.exit_code = 0
+        self.completed = False
 
         self.publisher = self.create_publisher(Image, "/material_counter/image", 10)
         self.subscription = self.create_subscription(String, "/material_counter/counts", self.result_callback, 10)
@@ -64,20 +65,24 @@ class SingleImageClient(Node):
             return
 
         self.get_logger().info(f"Received material count result: {payload}")
+        self.timeout_timer.cancel()
         self.exit_code = 0
-        rclpy.shutdown()
+        self.completed = True
 
     def handle_timeout(self) -> None:
         self.get_logger().error("Timed out waiting for material count result")
         self.exit_code = 1
-        rclpy.shutdown()
+        self.completed = True
 
 
 def main() -> None:
     rclpy.init()
     node = SingleImageClient()
     try:
-        rclpy.spin(node)
+        while rclpy.ok() and not node.completed:
+            rclpy.spin_once(node, timeout_sec=0.1)
+    except KeyboardInterrupt:
+        node.exit_code = node.exit_code or 130
     finally:
         node.destroy_node()
         if rclpy.ok():

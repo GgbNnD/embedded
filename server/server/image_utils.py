@@ -11,16 +11,18 @@ from sensor_msgs.msg import Image
 def resolve_default_model_path() -> Path:
     current = Path(__file__).resolve()
     for parent in current.parents:
-        candidate = parent / "weights" / "materials_yolo" / "best.pt"
-        if candidate.exists():
-            return candidate
+        for model_name in ("last.pt", "best.pt"):
+            candidate = parent / "weights" / "materials_yolo" / model_name
+            if candidate.exists():
+                return candidate
 
     share_dir = Path(get_package_share_directory("server"))
-    packaged_model = share_dir / "models" / "best.pt"
-    if packaged_model.exists():
-        return packaged_model
+    for model_name in ("last.pt", "best.pt"):
+        packaged_model = share_dir / "models" / model_name
+        if packaged_model.exists():
+            return packaged_model
 
-    raise FileNotFoundError("Unable to locate weights/materials_yolo/best.pt")
+    raise FileNotFoundError("Unable to locate weights/materials_yolo/{last.pt,best.pt}")
 
 
 def resolve_default_known_face_dir() -> Path:

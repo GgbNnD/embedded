@@ -218,6 +218,109 @@ embedded-client --camera-backend opencv --camera-index 0
 - 点击 `Capture Materials`
 - 如果取景不对，就调整镜头后再点
 
+## 9. 树莓派开机自启
+
+如果你的 `client` 运行的是当前这个 `tkinter` 图形界面，推荐使用“桌面自动启动”而不是普通后台 `systemd` 服务。
+
+原因：
+
+- `embedded-client` 需要图形桌面环境
+- 如果机器还没进入桌面会话，直接后台启动通常会因为没有 `DISPLAY` 而失败
+
+### 9.1 先确认手动运行没问题
+
+在树莓派上先确认下面命令能正常打开客户端：
+
+```bash
+cd /home/cells/embedded/client
+python3 scripts/run_client \
+  --camera-backend rpicam \
+  --server-host 192.168.1.20 \
+  --server-port 9000
+```
+
+### 9.2 给仓库里的启动脚本加执行权限
+
+仓库里已经提供了一个自动启动脚本：
+
+```text
+client/scripts/start_client_autostart.sh
+```
+
+执行：
+
+```bash
+chmod +x /home/cells/embedded/client/scripts/start_client_autostart.sh
+```
+
+这个脚本会启动：
+
+```bash
+python3 scripts/run_client \
+  --camera-backend rpicam \
+  --server-host 192.168.1.20 \
+  --server-port 9000
+```
+
+并把日志写到：
+
+```text
+/home/cells/embedded/client/client_autostart.log
+```
+
+### 9.3 创建桌面自动启动项
+
+在树莓派上执行：
+
+```bash
+mkdir -p ~/.config/autostart
+cat > ~/.config/autostart/embedded-client.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Embedded Client
+Exec=/home/cells/embedded/client/scripts/start_client_autostart.sh
+Path=/home/cells/embedded/client
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+```
+
+### 9.4 打开树莓派自动登录桌面
+
+如果你希望“上电后不手动登录也自动弹出 client 界面”，还需要让 Raspberry Pi OS 自动登录到图形桌面。
+
+可以执行：
+
+```bash
+sudo raspi-config
+```
+
+然后进入：
+
+```text
+System Options -> Boot / Auto Login -> Desktop Autologin
+```
+
+### 9.5 重启验证
+
+执行：
+
+```bash
+sudo reboot
+```
+
+重启后检查：
+
+- 是否自动进入桌面
+- 是否自动弹出 client 窗口
+- 如果没起来，查看日志 `client/client_autostart.log`
+
+### 9.6 如果你改了 server 地址或端口
+
+直接编辑这个脚本即可：
+
+- [start_client_autostart.sh](/home/cells/embedded/client/scripts/start_client_autostart.sh)
+
 ### 8.5 无显示器环境
 
 如果是远程终端或无桌面环境，可以先做无头验证：
