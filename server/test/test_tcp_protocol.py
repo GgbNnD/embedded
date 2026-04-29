@@ -15,7 +15,9 @@ from tcp_protocol import (  # noqa: E402
     ConnectionClosedError,
     ProtocolError,
     decode_image_payload,
+    receive_message,
     receive_json_message,
+    send_message,
     send_json_message,
     validate_inventory_payload,
 )
@@ -36,7 +38,7 @@ class TcpProtocolTests(unittest.TestCase):
     def test_receive_json_message_rejects_invalid_json(self) -> None:
         left, right = socket.socketpair()
         try:
-            left.sendall((4).to_bytes(4, "big") + b"nope")
+            left.sendall((4).to_bytes(4, "big") + (0).to_bytes(4, "big") + b"nope")
             with self.assertRaises(ProtocolError) as context:
                 receive_json_message(right)
             self.assertEqual(context.exception.code, "INVALID_JSON")
@@ -51,6 +53,19 @@ class TcpProtocolTests(unittest.TestCase):
             with self.assertRaises(ConnectionClosedError):
                 receive_json_message(right)
         finally:
+            right.close()
+
+    def test_send_and_receive_message_with_binary_attachment(self) -> None:
+        left, right = socket.socketpair()
+        try:
+            payload = {"type": "material_image", "request_id": "req-2", "payload": {"image_format": "webp"}}
+            attachment = b"compressed-image"
+            send_message(left, payload, attachment)
+            decoded_payload, decoded_attachment = receive_message(right)
+            self.assertEqual(decoded_payload, payload)
+            self.assertEqual(decoded_attachment, attachment)
+        finally:
+            left.close()
             right.close()
 
     def test_decode_image_payload(self) -> None:
@@ -68,9 +83,39 @@ class TcpProtocolTests(unittest.TestCase):
 
         self.assertEqual(decoded.shape, image.shape)
 
+    def test_decode_image_payload_from_binary_attachment(self) -> None:
+        image = np.zeros((8, 8, 3), dtype=np.uint8)
+        image[:, :] = (1, 2, 3)
+        success, buffer = cv2.imencode(".webp", image, [int(cv2.IMWRITE_WEBP_QUALITY), 70])
+        self.assertTrue(success)
+
+        encoded = buffer.tobytes()
+        decoded = decode_image_payload(
+            {
+                "image_encoding": "binary",
+                "image_format": "webp",
+                "image_size_bytes": len(encoded),
+            },
+            encoded,
+        )
+
+        self.assertEqual(decoded.shape, image.shape)
+
     def test_decode_image_payload_rejects_bad_base64(self) -> None:
         with self.assertRaises(ProtocolError) as context:
             decode_image_payload({"image_base64": "%%%", "image_format": "jpg"})
+        self.assertEqual(context.exception.code, "INVALID_IMAGE")
+
+    def test_decode_image_payload_rejects_mismatched_binary_size(self) -> None:
+        with self.assertRaises(ProtocolError) as context:
+            decode_image_payload(
+                {
+                    "image_encoding": "binary",
+                    "image_format": "webp",
+                    "image_size_bytes": 10,
+                },
+                b"abc",
+            )
         self.assertEqual(context.exception.code, "INVALID_IMAGE")
 
     def test_validate_inventory_payload_normalizes_action_and_quantity(self) -> None:

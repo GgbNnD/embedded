@@ -16,40 +16,72 @@
 \gdef\HyperFirstAtBeginDocument#1{#1}
 \providecommand*\HyPL@Entry[1]{}
 \HyPL@Entry{0<</S/D>>}
-\providecommand \oddpage@label [2]{}
 \HyPL@Entry{1<</S/D>>}
 \@writefile{toc}{\contentsline {section}{摘要}{1}{section*.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {1}项目背景与需求分析}{3}{section.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}系统总体设计}{3}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}架构划分}{3}{subsection.2.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces 系统总体结构图}}{4}{figure.1}\protected@file@percent }
-\newlabel{fig:system-arch}{{1}{4}{系统总体结构图}{figure.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}模块分工}{4}{subsection.2.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces 系统主要模块与职责}}{5}{table.1}\protected@file@percent }
-\newlabel{tab:module-role}{{1}{5}{系统主要模块与职责}{table.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3}系统运行逻辑}{5}{section.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces 系统运行主流程图}}{6}{figure.2}\protected@file@percent }
-\newlabel{fig:workflow}{{2}{6}{系统运行主流程图}{figure.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}关键技术与实现分析}{7}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}图像采集与客户端状态机}{7}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}TCP 协议与分布式解耦}{7}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}物资识别模块（YOLO）}{8}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}人脸识别模块}{9}{subsection.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}库存差分、CSV 记录与 Web 看板}{9}{subsection.4.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}结果展示与项目亮点}{10}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}训练结果与模型表现}{10}{subsection.5.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces YOLO 模型较优阶段指标（第 31 轮）}}{10}{table.2}\protected@file@percent }
-\newlabel{tab:metrics}{{2}{10}{YOLO 模型较优阶段指标（第 31 轮）}{table.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces 模型训练结果与类别区分情况}}{11}{figure.3}\protected@file@percent }
-\newlabel{fig:training-and-confusion}{{3}{11}{模型训练结果与类别区分情况}{figure.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}单图推理与闭环验证}{12}{subsection.5.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces 单张测试图像的物资检测结果示例}}{12}{figure.4}\protected@file@percent }
-\newlabel{fig:prediction-example}{{4}{12}{单张测试图像的物资检测结果示例}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}项目亮点归纳}{12}{subsection.5.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}总结与展望}{13}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}项目背景}{4}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}需求与总体思路}{4}{section.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces 项目中的主要模块与分工}}{5}{table.1}\protected@file@percent }
+\newlabel{tab:modules}{{1}{5}{项目中的主要模块与分工}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}技术路线与选型依据}{5}{section.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces 关键技术点的原理和选型理由}}{6}{table.2}\protected@file@percent }
+\newlabel{tab:tech-principles}{{2}{6}{关键技术点的原理和选型理由}{table.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces 支撑技术选型的项目数据}}{7}{table.3}\protected@file@percent }
+\newlabel{tab:evidence}{{3}{7}{支撑技术选型的项目数据}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces 旧图像编码与新图像编码的 TCP 报文大小对比}}{8}{table.4}\protected@file@percent }
+\newlabel{tab:encoding-benchmark}{{4}{8}{旧图像编码与新图像编码的 TCP 报文大小对比}{table.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}系统总体结构}{8}{section.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces 系统总体结构图（gpt-image2 生成，按项目模块整理）}}{9}{figure.1}\protected@file@percent }
+\newlabel{fig:system-arch-gpt}{{1}{9}{系统总体结构图（gpt-image2 生成，按项目模块整理）}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}项目运行流程}{9}{section.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces 项目主流程图（gpt-image2 生成，结合客户端状态机整理）}}{10}{figure.2}\protected@file@percent }
+\newlabel{fig:workflow-gpt}{{2}{10}{项目主流程图（gpt-image2 生成，结合客户端状态机整理）}{figure.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}关键实现}{11}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}轻量客户端与状态机}{11}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}TCP 协议与跨设备边界}{11}{subsection.6.2}\protected@file@percent }
+\newlabel{lst:inventory-json}{{1}{12}{库存记录请求示例}{lstlisting.1}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}库存记录请求示例}{12}{lstlisting.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}ROS2 服务端节点}{12}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}YOLO 物资检测}{13}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}人脸识别门控}{13}{subsection.6.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.6}库存记录与看板}{13}{subsection.6.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}代码级实现对应关系}{14}{section.7}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces 主流程与源码实现的对应关系}}{14}{table.5}\protected@file@percent }
+\newlabel{tab:code-map}{{5}{14}{主流程与源码实现的对应关系}{table.5}{}}
+\newlabel{lst:logic-state}{{2}{14}{客户端状态机的关键入口（整理自 logic\_node.py）}{lstlisting.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}客户端状态机的关键入口（整理自 logic\_node.py）}{14}{lstlisting.2}\protected@file@percent }
+\newlabel{lst:inventory-diff}{{3}{15}{库存差分逻辑（整理自 logic\_utils.py）}{lstlisting.3}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}库存差分逻辑（整理自 logic\_utils.py）}{15}{lstlisting.3}\protected@file@percent }
+\newlabel{lst:tcp-bridge}{{4}{15}{TCP 网桥分发逻辑（整理自 tcp\_bridge\_node.py）}{lstlisting.4}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}TCP 网桥分发逻辑（整理自 tcp\_bridge\_node.py）}{15}{lstlisting.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces 服务端识别结果字段与客户端使用方式}}{16}{table.6}\protected@file@percent }
+\newlabel{tab:result-fields}{{6}{16}{服务端识别结果字段与客户端使用方式}{table.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}项目迭代记录}{16}{section.8}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces 从旧版实现到当前系统的主要迭代}}{17}{table.7}\protected@file@percent }
+\newlabel{tab:iteration}{{7}{17}{从旧版实现到当前系统的主要迭代}{table.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces 关键迭代的选择理由与支撑依据}}{18}{table.8}\protected@file@percent }
+\newlabel{tab:iteration-reason}{{8}{18}{关键迭代的选择理由与支撑依据}{table.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}从二维码扫描到视觉差分}{18}{subsection.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}从一体化脚本到模块化服务}{19}{subsection.8.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}从硬件强绑定到轻量客户端}{19}{subsection.8.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}数据集与模型训练}{19}{section.9}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces 物资检测数据集划分}}{20}{table.9}\protected@file@percent }
+\newlabel{tab:dataset-split}{{9}{20}{物资检测数据集划分}{table.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces YOLO 模型较优阶段指标（第 31 轮）}}{20}{table.10}\protected@file@percent }
+\newlabel{tab:metrics}{{10}{20}{YOLO 模型较优阶段指标（第 31 轮）}{table.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces 模型训练结果与类别区分情况}}{20}{figure.3}\protected@file@percent }
+\newlabel{fig:training}{{3}{20}{模型训练结果与类别区分情况}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces 单图物资检测与计数结果示例}}{21}{figure.4}\protected@file@percent }
+\newlabel{fig:prediction}{{4}{21}{单图物资检测与计数结果示例}{figure.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}系统亮点}{21}{section.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}客户端不再依赖 ROS2}{21}{subsection.10.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.2}身份识别前置}{21}{subsection.10.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.3}前后差分代替手工填数}{22}{subsection.10.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.4}看板让结果可检查}{22}{subsection.10.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}不足与后续改进}{22}{section.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {12}总结}{22}{section.12}\protected@file@percent }
 \bibcite{repo}{1}
 \bibcite{ultralytics}{2}
 \bibcite{ros2}{3}
 \bibcite{face}{4}
-\@writefile{toc}{\contentsline {section}{参考资料}{14}{section*.3}\protected@file@percent }
-\gdef \@abspage@last{15}
+\@writefile{toc}{\contentsline {section}{参考资料}{23}{section*.3}\protected@file@percent }
+\gdef \@abspage@last{24}

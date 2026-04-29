@@ -23,7 +23,7 @@ client/
 │   ├── logic_node.py       # 业务流程状态机
 │   ├── logic_utils.py      # 纯业务逻辑辅助函数
 │   ├── tcp_client_node.py  # TCP 客户端
-│   ├── tcp_protocol.py     # 长度前缀 JSON 协议
+│   ├── tcp_protocol.py     # 长度前缀 JSON + 二进制附件协议
 │   └── ui_node.py          # tkinter 图形界面与程序入口
 ├── scripts/
 │   └── run_client          # 仓库内直接启动入口
@@ -120,7 +120,8 @@ python scripts/run_client \
 | `--server-port` | `9000` | server TCP 端口 |
 | `--connect-timeout-sec` | `3.0` | 建立 TCP 连接超时 |
 | `--request-timeout-sec` | `15.0` | 单次 TCP 请求超时 |
-| `--jpeg-quality` | `90` | 发图时 JPEG 压缩质量 |
+| `--image-format` | `webp` | 发图压缩格式，默认 `webp` 比旧的 `base64+jpeg` 更省带宽 |
+| `--image-quality` | `75` | 发图压缩质量，兼容旧参数名 `--jpeg-quality` |
 | `--face-retry-interval-sec` | `1.0` | 人脸识别重试周期 |
 | `--face-timeout-sec` | `60.0` | 人脸识别总超时 |
 | `--settle-delay-sec` | `3.5` | Reserved compatibility option from the previous auto-capture flow |

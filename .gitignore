@@ -12,3 +12,4 @@ server/log/
 !server/assets/known_face/*.jpg
 !server/assets/known_face/*.jpeg
 !server/assets/known_face/*.png
+!docs/latex/figures/*

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import socket
@@ -12,8 +11,8 @@ from typing import Any
 import numpy as np
 
 from client.config import build_argument_parser, config_from_args
-from client.image_utils import encode_bgr_as_jpeg
-from client.tcp_protocol import ConnectionClosedError, ProtocolError, receive_json_message, send_json_message
+from client.image_utils import encode_bgr_image, normalize_image_format
+from client.tcp_protocol import ConnectionClosedError, ProtocolError, receive_json_message, send_message
 
 
 @dataclass(slots=True)
@@ -32,7 +31,8 @@ class TcpClientNode:
         server_port: int = 9000,
         connect_timeout_sec: float = 3.0,
         request_timeout_sec: float = 15.0,
-        jpeg_quality: int = 90,
+        image_format: str = "webp",
+        image_quality: int = 75,
         logger: logging.Logger | None = None,
     ) -> None:
         self.logger = logger or logging.getLogger("client.tcp")
@@ -40,7 +40,8 @@ class TcpClientNode:
         self.server_port = int(server_port)
         self.connect_timeout_sec = float(connect_timeout_sec)
         self.request_timeout_sec = float(request_timeout_sec)
-        self.jpeg_quality = int(jpeg_quality)
+        self.image_format = normalize_image_format(image_format)
+        self.image_quality = int(image_quality)
 
         self._socket_lock = threading.Lock()
         self._socket: socket.socket | None = None
@@ -109,7 +110,7 @@ class TcpClientNode:
         request_type: str,
         image: np.ndarray | None,
         payload: dict[str, Any] | None,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], bytes]:
         normalized_type = request_type.strip()
         if normalized_type not in {"face_image", "material_image", "inventory_record"}:
             raise ValueError(f"Unsupported request type: {request_type}")
@@ -117,28 +118,36 @@ class TcpClientNode:
         if normalized_type in {"face_image", "material_image"}:
             if image is None:
                 raise ValueError(f"image is required for {normalized_type}")
+            encoded_image = encode_bgr_image(image, image_format=self.image_format, quality=self.image_quality)
             request_payload: dict[str, Any] = {
-                "image_base64": base64.b64encode(encode_bgr_as_jpeg(image, quality=self.jpeg_quality)).decode("ascii"),
-                "image_format": "jpg",
+                "image_encoding": "binary",
+                "image_format": self.image_format,
+                "image_size_bytes": len(encoded_image),
             }
+            attachment = encoded_image
         else:
             if not isinstance(payload, dict):
                 raise ValueError("payload is required for inventory_record")
             request_payload = payload
+            attachment = b""
 
-        return {
-            "type": normalized_type,
-            "request_id": uuid.uuid4().hex,
-            "payload": request_payload,
-        }
+        return (
+            {
+                "type": normalized_type,
+                "request_id": uuid.uuid4().hex,
+                "payload": request_payload,
+            },
+            attachment,
+        )
 
-    def _perform_request(self, body: dict[str, Any]) -> dict[str, Any]:
+    def _perform_request(self, request: tuple[dict[str, Any], bytes]) -> dict[str, Any]:
+        body, attachment = request
         with self._socket_lock:
             last_error: Exception | None = None
             for _ in range(2):
                 try:
                     sock = self._ensure_connection_locked()
-                    send_json_message(sock, body)
+                    send_message(sock, body, attachment)
                     return receive_json_message(sock)
                 except (OSError, TimeoutError, ConnectionClosedError, ProtocolError) as exc:
                     last_error = exc
@@ -190,7 +199,8 @@ def main(argv: list[str] | None = None) -> None:
         server_port=config.server_port,
         connect_timeout_sec=config.connect_timeout_sec,
         request_timeout_sec=config.request_timeout_sec,
-        jpeg_quality=config.jpeg_quality,
+        image_format=config.image_format,
+        image_quality=config.image_quality,
     )
 
     try:

@@ -6,7 +6,7 @@ import struct
 from typing import Any
 
 
-LENGTH_PREFIX = struct.Struct("!I")
+MESSAGE_PREFIX = struct.Struct("!II")
 
 
 class ConnectionClosedError(RuntimeError):
@@ -27,18 +27,20 @@ def recv_exactly(sock: socket.socket, size: int) -> bytes:
     return bytes(chunks)
 
 
-def send_json_message(sock: socket.socket, payload: dict[str, Any]) -> None:
+def send_message(sock: socket.socket, payload: dict[str, Any], attachment: bytes = b"") -> None:
     encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    sock.sendall(LENGTH_PREFIX.pack(len(encoded)) + encoded)
+    sock.sendall(MESSAGE_PREFIX.pack(len(encoded), len(attachment)) + encoded + attachment)
 
-
-def receive_json_message(sock: socket.socket) -> dict[str, Any]:
-    header = recv_exactly(sock, LENGTH_PREFIX.size)
-    (message_length,) = LENGTH_PREFIX.unpack(header)
+def receive_message(sock: socket.socket) -> tuple[dict[str, Any], bytes]:
+    header = recv_exactly(sock, MESSAGE_PREFIX.size)
+    message_length, attachment_length = MESSAGE_PREFIX.unpack(header)
     if message_length <= 0:
         raise ProtocolError("Message length must be greater than 0")
+    if attachment_length < 0:
+        raise ProtocolError("Attachment length must not be negative")
 
     body = recv_exactly(sock, message_length)
+    attachment = recv_exactly(sock, attachment_length) if attachment_length else b""
     try:
         payload = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -46,4 +48,15 @@ def receive_json_message(sock: socket.socket) -> dict[str, Any]:
 
     if not isinstance(payload, dict):
         raise ProtocolError("Top-level JSON payload must be an object")
+    return payload, attachment
+
+
+def send_json_message(sock: socket.socket, payload: dict[str, Any]) -> None:
+    send_message(sock, payload)
+
+
+def receive_json_message(sock: socket.socket) -> dict[str, Any]:
+    payload, attachment = receive_message(sock)
+    if attachment:
+        raise ProtocolError("Expected a JSON-only message but received a binary attachment")
     return payload

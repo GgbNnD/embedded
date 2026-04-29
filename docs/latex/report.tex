@@ -5,8 +5,8 @@
 \usepackage{indentfirst}
 \usepackage{lmodern}
 \usepackage{setspace}
-\usepackage{verbatim}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{graphicx}
 \usepackage{subfigure}
@@ -17,277 +17,269 @@
 \usepackage{listings}
 \usepackage{relsize}
 \usepackage[usenames]{color}
+\usepackage[table]{xcolor}
 \usepackage{fontspec}
 \usepackage{geometry}
-\geometry{left=2.0cm,right=2.0cm,top=2.5cm,bottom=2.5cm}
-
 \usepackage{enumitem}
-\setlist[enumerate]{listparindent=\parindent}
-
-\usepackage[table]{xcolor}
 \usepackage{array}
-\usepackage[rightcaption]{sidecap}
 \usepackage{hyperref}
 \usepackage{float}
-\usepackage{tikz}
-\usepackage{pgfplots}
-\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, calc}
-\pgfplotsset{compat=1.18}
+
+\geometry{left=2.0cm,right=2.0cm,top=2.5cm,bottom=2.5cm}
+\graphicspath{{./figures/}}
+\onehalfspacing
+\setlength{\parindent}{2em}
+\addtolength{\parskip}{2pt}
+\renewcommand{\arraystretch}{1.35}
+\renewcommand\refname{参考资料}
 
 \hypersetup{
-	colorlinks=true,
-	linkcolor=black
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue!60!black
 }
+
+\definecolor{lightgray}{RGB}{245,245,244}
+\definecolor{deepblue}{RGB}{24,73,133}
+\definecolor{softgreen}{RGB}{231,246,238}
+\definecolor{softblue}{RGB}{232,242,255}
+\definecolor{softorange}{RGB}{255,244,226}
+\definecolor{linegray}{RGB}{225,229,235}
 
 \lstset{
- columns=fixed,
- numbers=left,
- numberstyle=\tiny\color{gray},
- frame=none,
- backgroundcolor=\color[RGB]{245,245,244},
- keywordstyle=\color[RGB]{40,40,255},
- numberstyle=\footnotesize\color{darkgray},
- commentstyle=\it\color[RGB]{0,96,96},
- stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},
- showstringspaces=false,
- breaklines=true,
- language=python,
+    columns=fixed,
+    numbers=left,
+    numberstyle=\footnotesize\color{gray},
+    frame=single,
+    rulecolor=\color{linegray},
+    backgroundcolor=\color{lightgray},
+    keywordstyle=\color{deepblue},
+    commentstyle=\it\color[RGB]{0,96,96},
+    stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},
+    showstringspaces=false,
+    breaklines=true,
+    basicstyle=\small\ttfamily,
+    language=python
 }
 
-\newcommand{\myd}{\;\mathrm{d}}
-\renewcommand{\arraystretch}{1.8}
-\renewcommand\refname{参考网站}
+\setlist[itemize]{itemsep=2pt,topsep=2pt}
+\setlist[enumerate]{itemsep=2pt,topsep=2pt}
 
-\setlength{\parindent}{2em}
-\addtolength{\parskip}{3pt}
-\onehalfspacing
-\graphicspath{{./figures/}}
-\newcommand{\daima}[1]{{\ttfamily{#1}}}
-
-\setlist[itemize]{itemsep=-4pt}
-\setlist[enumerate]{itemsep=-4pt}
-
-\newcolumntype{H}{>{\centering\arraybackslash}p{2cm}}
-\newcolumntype{C}{>{\centering\arraybackslash}p{2.4cm}}
-
-\usepackage{algorithm2e}
-\usepackage{amssymb}
-
-\definecolor{clientfill}{RGB}{232,242,255}
-\definecolor{serverfill}{RGB}{231,246,238}
-\definecolor{datafill}{RGB}{255,242,225}
-\definecolor{flowfill}{RGB}{245,248,252}
-\definecolor{decisionfill}{RGB}{255,245,214}
-
-\tikzset{
-  module/.style={draw, rounded corners=4pt, thick, align=center, minimum height=10mm, font=\small},
-  clientbox/.style={module, fill=clientfill, draw=blue!60!black, minimum width=30mm},
-  serverbox/.style={module, fill=serverfill, draw=green!45!black, minimum width=32mm},
-  databox/.style={module, fill=datafill, draw=orange!70!black, minimum width=28mm},
-  groupbox/.style={draw, rounded corners=6pt, dashed, thick, inner sep=8pt},
-  flowbox/.style={draw, rounded corners=4pt, thick, fill=flowfill, align=center, text width=5.9cm, minimum height=9mm, font=\small},
-  decision/.style={diamond, draw, thick, fill=decisionfill, align=center, aspect=2.1, inner sep=1pt, font=\small, text width=3.2cm},
-  line/.style={-Latex, thick},
-}
+\newcommand{\code}[1]{{\ttfamily #1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{M}[1]{>{\centering\arraybackslash}p{#1}}
+\emergencystretch=3em
 
 \begin{document}
-	\begin{titlepage}
-		\vspace*{-2.5cm}
-		\begin{figure}[h]
-			\centering
-			\includegraphics[width=0.8\linewidth]{zjdx}
-		\end{figure}
-		\begin{figure}[h]
-			\centering
-			\includegraphics[width=0.3\linewidth]{qsy}
-		\end{figure}
-		\vspace{-0.2cm}
-		\begin{center}
-			\Huge{\textbf{分布式智能物资管理系统}}\\
-		\end{center}
-		\vspace*{0.8cm}
-		\begin{center}
-			\larger[2]{
-				\begin{tabular}{cc}
-					姓\hspace{12pt}名 & \underline{\makebox[220pt]{\kaishu 黄鹤翔}}\\
-					学\hspace{12pt}号 & \underline{\makebox[220pt]{3230106231}}\\
-					院\hspace{12pt}系 & \underline{\makebox[220pt]{\kaishu 信息与电子工程学院}}\\
-					指导老师 & \underline{\makebox[220pt]{\kaishu 杜歆}}\\
-				\end{tabular}
-			}
-		\end{center}
-	\end{titlepage}
 
-	\pagenumbering{arabic}
-
-    \section*{摘要}
-    \addcontentsline{toc}{section}{摘要}
-    本项目围绕实验室物资借还场景，设计并实现了一套分布式智能物资管理系统。系统将树莓派侧图像采集、服务端人脸识别、YOLO 物资检测、TCP 协议通信、出入库差分记录以及本地 Web 看板整合在一起，形成“身份确认--物资识别--自动登记--结果追溯”的完整闭环。与只做单张图检测的原型相比，本项目更关注真实使用流程中的可部署性与可追溯性：客户端不再依赖 ROS2，服务端内部采用 ROS2 节点解耦识别任务，跨设备之间只通过轻量 TCP 协议交互；库存记录先落到 CSV，再由本地看板汇总展示，既降低了课程项目的实现复杂度，也保留了后续扩展到数据库系统的空间。实验结果表明，当前三类物资数据集上模型在第 31 轮训练时取得了 87.74\% 的 mAP50 和 76.15\% 的 mAP50-95，能够支撑课程项目阶段的闭环验证。报告重点从系统背景、运行流程、关键技术选择与结果展示四个角度展开，对比分析各模块方案的取舍与优势。
-
-    \noindent\textbf{关键词：} 嵌入式系统；分布式协同；YOLO 目标检测；人脸识别；TCP 通信；库存看板
-
-    \newpage
-    \tableofcontents
-    \newpage
-
-    \section{项目背景与需求分析}
-
-    实验室和小型仓储场景中的物资管理，表面上是“记账”问题，实际牵涉到身份确认、数量核对、责任追踪和后续查询等多个环节。传统做法通常依赖纸质登记表、微信群接龙或者电子表格手工录入，这类方式在物资种类少、人员固定时尚可维持，一旦进入多人共享、频繁借还的使用环境，就容易暴露出三类问题。
-
-    其一，记录与操作脱节。物资是现场取走的，但登记往往发生在事后，容易出现“先拿后补”“记了一半忘了提交”等情况。其二，责任链不完整。若不先确认操作者身份，后续只能看到某个数量发生变化，却难以准确追溯是谁执行了这次入库或出库。其三，系统部署门槛高。若将检测、识别、记录、展示全部堆到一台设备上，计算资源和开发复杂度都会迅速抬升；若直接采用跨机器 ROS2 通信，又会给客户端环境配置带来额外负担。
-
-    基于以上问题，本项目没有把目标限定为“识别图片中的几个物资”，而是把重点放在闭环流程的构建上。具体而言，系统需要满足以下四点要求：
-
-    \begin{enumerate}
-        \item 在用户执行出入库动作之前，先完成身份识别，避免匿名操作。
-        \item 在操作前后各获取一次物资图像，通过数量差分自动生成库存变化记录，而非要求用户手工输入数量。
-        \item 将客户端采集与服务端识别解耦，保证树莓派等轻量设备也能稳定接入。
-        \item 提供一个本地可视化看板，能够查看当前库存状态、最近操作人员和历史变化轨迹。
-    \end{enumerate}
-
-    从目前仓库的真实实现看，系统已经具备上述闭环能力。其中，物资检测模型当前先以 \daima{cboard}、\daima{dmj4310}、\daima{m3508} 三类物资为主完成验证；而记录、看板和协议层则按照通用物资条目来设计，便于后续扩展到更多类别。这样的推进顺序比较符合课程项目的节奏：先跑通系统主链路，再逐步扩展识别范围，而不是一开始就追求大而全。
-
-    \section{系统总体设计}
-
-    \subsection{架构划分}
-
-    本项目采用典型的客户端--服务端协同结构，其中客户端负责本地交互与抓拍，服务端负责识别、汇总和展示。这样做的关键原因在于，树莓派侧更适合承担摄像头控制和界面交互，而模型推理、人脸编码库和库存看板更适合集中放在计算资源更充足的服务端主机上。
-
-    \begin{figure}[H]
+\begin{titlepage}
+    \vspace*{-2.4cm}
+    \begin{figure}[h]
         \centering
-        \resizebox{0.96\textwidth}{!}{
-        \begin{tikzpicture}[node distance=10mm and 16mm]
-            \node[clientbox] (camera) {CameraNode\\rpicam / OpenCV};
-            \node[clientbox, below=of camera] (logic) {UI + LogicNode\\工作流控制};
-            \node[clientbox, below=of logic] (tcpclient) {TcpClientNode\\长度前缀 JSON};
-
-            \node[serverbox, right=40mm of logic] (bridge) {tcp\_bridge\_node\\请求汇聚与转发};
-            \node[serverbox, above=18mm of bridge] (face) {face\_recognize\_node\\身份识别};
-            \node[serverbox, below=18mm of bridge] (material) {material\_counter\_node\\YOLO 计数};
-            \node[databox, right=34mm of bridge] (csv) {inventory\_records.csv\\出入库日志};
-            \node[databox, below=18mm of csv] (web) {inventory\_web\_node\\本地实时看板};
-
-            \draw[line] (camera) -- (logic);
-            \draw[line] (logic) -- node[left]{状态驱动} (tcpclient);
-            \draw[line] (tcpclient.east) -- node[above, align=center]{\small \daima{face\_image} / \daima{material\_image}\\ \small / \daima{inventory\_record}} (bridge.west);
-            \draw[line] (bridge.north) -- node[right]{\small 人脸图与识别结果} (face.south);
-            \draw[line] (bridge.south) -- node[right]{\small 物资图与计数结果} (material.north);
-            \draw[line] (bridge) -- node[above]{写入库存记录} (csv);
-            \draw[line] (csv) -- node[right]{汇总刷新} (web);
-
-            \node[groupbox, fit=(camera)(logic)(tcpclient), label=above:{\textbf{客户端设备}}] {};
-            \node[groupbox, fit=(bridge)(face)(material)(csv)(web), label=above:{\textbf{服务端主机}}] {};
-        \end{tikzpicture}
-        }
-        \caption{系统总体结构图}
-        \label{fig:system-arch}
+        \includegraphics[width=0.8\linewidth]{zjdx}
     \end{figure}
-
-    图~\ref{fig:system-arch} 展示了本项目的核心分工。客户端侧由 \daima{CameraNode}、\daima{LogicNode} 和 \daima{TcpClientNode} 组成，其中 \daima{LogicNode} 负责整条业务流程的状态推进；服务端侧保留 ROS2 包结构，但 ROS2 只在服务端内部承担节点解耦的作用，人脸识别节点和物资识别节点通过 topic 与 \daima{tcp\_bridge\_node} 协同，跨设备则完全走 TCP。这样既保留了 ROS2 对模块划分的便利，也避免了在客户端部署 ROS2 带来的学习和配置成本。
-
-    \subsection{模块分工}
-
-    为了让各模块职责更加清晰，系统可以进一步拆成表~\ref{tab:module-role} 所示的几个功能层次。
-
-    \begin{table}[H]
+    \begin{figure}[h]
         \centering
-        \caption{系统主要模块与职责}
-        \label{tab:module-role}
-        {\small
-        \begin{tabularx}{\textwidth}{>{\centering\arraybackslash}p{2.5cm}>{\centering\arraybackslash}p{4.3cm}X}
-            \toprule
-            层次 & 核心模块 & 主要职责 \\
-            \midrule
-            客户端采集层 & 相机采集模块 & 统一封装摄像头抓拍接口，优先调用 \daima{rpicam-still}，必要时退回 OpenCV。 \\
-            客户端控制层 & 状态机与 UI 模块 & 维护工作流状态，控制人脸识别重试、物资前后拍摄、差分计算和记录提交。 \\
-            网络通信层 & TCP 客户端 / TCP 网桥 & 通过长度前缀 JSON 协议在客户端与服务端之间传输图像请求和库存记录。 \\
-            服务端识别层 & 人脸识别节点 / 物资识别节点 & 分别完成人脸识别与 YOLO 物资检测，并将结果封装为 JSON 返回。 \\
-            数据展示层 & CSV 日志 / Web 看板 & 将变更记录落盘为 \daima{inventory\_records.csv}，再汇总成库存总览和详情看板。 \\
-            \bottomrule
-        \end{tabularx}
-        }
-    \end{table}
-
-    从整体设计看，这套结构并不追求一次性引入最复杂的基础设施，而是强调“每一层都有明确输入输出”。课程项目阶段更看重系统是否稳定闭环，因此本项目优先用轻量但透明的方式完成联调，例如库存记录先写 CSV 而不是直接上数据库，看板默认只绑定 \daima{127.0.0.1} 而不开放外网。这样的设计虽然保守，却更有利于在有限时间内把问题定位清楚。
-
-    \section{系统运行逻辑}
-
-    系统主流程由客户端状态机驱动，服务端识别节点根据请求类型提供结果，库存记录在差分阶段才真正生成。其运行逻辑如图~\ref{fig:workflow} 所示。
-
-    \begin{figure}[H]
-        \centering
-        \resizebox{0.94\textwidth}{!}{
-        \begin{tikzpicture}[node distance=7mm and 12mm]
-            \node[flowbox] (start) {点击开始操作，进入 \daima{recognizing\_face} 状态};
-            \node[flowbox, below=of start] (facecap) {客户端定时抓拍人脸图，并通过 \daima{face\_image} 请求发送到服务端};
-            \node[decision, below=of facecap] (facedec) {是否检测到\\恰好 1 张\\已知人脸?};
-            \node[flowbox, right=24mm of facedec] (retry) {保留在 \daima{recognizing\_face}，等待超时前继续重试};
-            \node[flowbox, below=of facedec] (move) {识别成功，记录人员姓名\\进入 \daima{waiting\_camera\_move}};
-            \node[flowbox, below=of move] (precap) {点击 \daima{Capture Materials}\\抓拍操作前物资图};
-            \node[flowbox, below=of precap] (waitfinish) {保存前态计数，进入 \daima{waiting\_finish}\\等待用户完成实际出入库};
-            \node[flowbox, below=of waitfinish] (postcap) {点击完成后抓拍操作后物资图\\进入 \daima{capturing\_post\_material}};
-            \node[flowbox, below=of postcap] (diff) {解析两次识别结果，进入 \daima{computing\_diff}\\计算新增与减少的物资条目};
-            \node[decision, below=of diff] (changed) {差分结果\\是否为空?};
-            \node[flowbox, left=24mm of changed] (nochange) {无变化时直接结束\\状态为 Success};
-            \node[flowbox, below=of changed] (submit) {生成 \daima{inventory\_record} 负载\\进入 \daima{submitting\_inventory}};
-            \node[flowbox, below=of submit] (csvwrite) {服务端写入 \daima{inventory\_records.csv}\\本地看板读取并刷新库存汇总};
-            \node[flowbox, below=of csvwrite] (end) {流程完成，可在看板查看当前数量、最后操作人和历史详情};
-
-            \draw[line] (start) -- (facecap);
-            \draw[line] (facecap) -- (facedec);
-            \draw[line] (facedec) -- node[above]{否} (retry);
-            \draw[line] (retry.south) |- ($(facecap.east)+(0.4,0)$) |- (facecap.east);
-            \draw[line] (facedec) -- node[right]{是} (move);
-            \draw[line] (move) -- (precap);
-            \draw[line] (precap) -- (waitfinish);
-            \draw[line] (waitfinish) -- (postcap);
-            \draw[line] (postcap) -- (diff);
-            \draw[line] (diff) -- (changed);
-            \draw[line] (changed) -- node[above]{是} (nochange);
-            \draw[line] (changed) -- node[right]{否} (submit);
-            \draw[line] (submit) -- (csvwrite);
-            \draw[line] (csvwrite) -- (end);
-        \end{tikzpicture}
-        }
-        \caption{系统运行主流程图}
-        \label{fig:workflow}
+        \includegraphics[width=0.3\linewidth]{qsy}
     \end{figure}
+    \vspace{-0.1cm}
+    \begin{center}
+        \Huge{\textbf{分布式智能物资管理系统}}\\[0.35cm]
+        \Large{基于 YOLO 识别、身份门控与本地库存看板的嵌入式项目报告}
+    \end{center}
+    \vspace*{0.9cm}
+    \begin{center}
+        \larger[2]{
+            \begin{tabular}{cc}
+                姓\hspace{12pt}名 & \underline{\makebox[220pt]{\kaishu 黄鹤翔}}\\
+                学\hspace{12pt}号 & \underline{\makebox[220pt]{3230106231}}\\
+                院\hspace{12pt}系 & \underline{\makebox[220pt]{\kaishu 信息与电子工程学院}}\\
+                指导老师 & \underline{\makebox[220pt]{\kaishu 杜歆}}\\
+            \end{tabular}
+        }
+    \end{center}
+    \vfill
+    \begin{center}
+        \large{2026 年 4 月}
+    \end{center}
+\end{titlepage}
 
-    与常见“持续视频流实时盘点”思路不同，本项目把一次完整的库存变更分成了两次物资拍摄和一次差分计算。这样做的优势在于，系统只需要关心操作前后数量是否发生变化，而不必在用户移动物资、遮挡镜头或操作过程中持续做复杂判断。具体来看，这条流程的关键触发点有三个：
+\pagenumbering{arabic}
 
-    \begin{enumerate}
-        \item 只有在人脸识别返回“恰好一张已知人脸”时，流程才允许进入物资拍摄阶段；
-        \item 操作前物资图改为人工点击 \daima{Capture Materials} 触发，而不是依赖自动稳定判定；
-        \item 只有在后态计数和前态计数求差之后，系统才真正生成入库或出库记录并写入 CSV。
-    \end{enumerate}
+\section*{摘要}
+\addcontentsline{toc}{section}{摘要}
 
-    这三个触发点对应的都是课程项目里最常见的失败源：身份不清、抓拍时机错误、记录与实际动作不同步。把它们显式做成状态转换条件，比把所有逻辑藏在一段连续视频处理流程里更容易调试，也更便于后期复盘。
+实验室物资借还看似只是登记数量，真正落到现场时却会同时遇到身份确认、拍照时机、数量核对和后续追溯等问题。本项目围绕这一实际场景，完成了一套分布式智能物资管理系统：树莓派或普通 Linux 客户端负责摄像头预览和用户操作，服务端集中运行人脸识别、YOLO 物资计数、TCP 网桥、CSV 记录和本地 Web 看板。系统的一次完整操作由“识别人脸、拍摄操作前物资、用户完成出入库、拍摄操作后物资、自动计算差分并写入记录”组成，最终把识别结果转化为可查询、可解释的库存流水。
 
-    \section{关键技术与实现分析}
+与只展示单张图片检测结果的原型不同，本项目更重视闭环可用性。客户端已经脱离 ROS2，改造成独立 Python 包；跨设备通信采用“双长度前缀 + JSON 头 + 二进制图像体”的 TCP 协议，避免客户端配置 DDS 和 ROS2 网络；服务端内部继续使用 ROS2 节点拆分识别任务；库存先写入 \code{server/assets/inventory\_records.csv}，再由本地看板汇总成当前库存、最近操作人和历史详情。当前物资检测模型在 \code{cboard}、\code{dmj4310}、\code{m3508} 三类物资上完成训练验证，第 31 轮达到 mAP50 为 87.74\%、mAP50-95 为 76.15\%，能够支撑课程项目阶段的系统联调和功能展示。
 
-    \subsection{图像采集与客户端状态机}
+\noindent\textbf{关键词：} 嵌入式系统；物资管理；YOLO；人脸识别；TCP；ROS2；库存看板
 
-    \textbf{原理：} 客户端需要在资源有限的设备上稳定获取图像，同时维持一个清晰可控的工作流。对树莓派这类平台而言，图像采集本身就会受到驱动、后端和桌面环境的影响，因此采集链路必须足够简单；而库存业务又具有明确阶段性，适合用状态机而非散乱回调来组织。
+\newpage
+\tableofcontents
+\newpage
 
-    \textbf{具体实现：} 当前实现中，\daima{CameraNode} 优先选择 \daima{rpicam-still} 抓拍 JPEG 输出，如果运行环境没有该工具，再自动退回 OpenCV。UI 层保留了 \daima{Start}、\daima{Capture Materials} 和 \daima{Finish} 三个关键按钮，\daima{LogicNode} 通过 \daima{recognizing\_face}、\daima{waiting\_camera\_move}、\daima{waiting\_finish}、\daima{computing\_diff} 等状态推进完整流程。尤其值得注意的是，项目后期把“自动稳定后抓拍前态物资”改成了手动按钮触发，这一变化直接减少了误抓拍。
+\section{项目背景}
 
-    \textbf{方案对比：} 如果采用连续视频自动抓拍方案，理论上交互更少，但在树莓派环境中容易受到帧率波动、相机移动和现场遮挡影响，稳定性判断稍有偏差就会在错误时刻截取前态图像。当前手动触发方案虽然多了一次点击，却能显著降低误判和返工成本，更符合课程项目先求稳后求自动化的思路。
+小型实验室和机器人队伍常常会共享电机、电调、开发板、相机和传感器。早期用纸质表格或电子表格登记还能应付，但只要借还频率提高，就会出现三个很具体的问题：东西拿走了但忘记补登记，表里写了数量却不知道是谁操作的，记录散落在不同文件里难以追溯。对嵌入式课程项目来说，这些问题又不能简单地靠“上一个复杂后台系统”解决，因为部署环境、开发时间和硬件资源都有限。
 
-    \textbf{本节亮点：} 这部分最有价值的地方并不是“功能更多”，而是把系统中最容易失控的抓拍阶段收敛成了一个用户可理解、开发者也容易调试的流程。对嵌入式项目而言，稳定往往比炫目的自动化更重要。
+因此，本项目没有把目标停在“识别图片里有几个物体”，而是把识别能力嵌入到真实业务动作里。系统需要先知道操作者是谁，再判断操作前后数量变化，最后把变化记录下来并展示出来。这个目标听上去比单点检测朴素，但更接近一个能被实际使用的小型系统。
 
-    \subsection{TCP 协议与分布式解耦}
+项目落地时还需要处理两类工程约束。第一，客户端可能部署在树莓派上，图像采集和 UI 应尽量轻，不应强制安装 ROS2 或复杂 GUI 依赖。第二，服务端需要集中管理模型权重、人脸库、记录文件和看板页面，适合保留 ROS2 节点化结构。最后形成的方案是：客户端与服务端之间只走 TCP，服务端内部再用 ROS2 topic 解耦人脸识别和物资识别。
 
-    \textbf{原理：} 客户端与服务端分布在不同设备上时，需要一个足够轻量且可持续复用连接的通信机制。由于这里传输的是图像和结构化记录，使用“长度前缀 + JSON”的 TCP 协议可以避免粘包拆包问题，同时保持报文可读性。
+\section{需求与总体思路}
 
-    \textbf{具体实现：} 客户端 \daima{TcpClientNode} 会把图像编码为 JPEG 后再转成 Base64，再按请求类型发送给服务端。当前定义了三类核心请求：
-    \begin{itemize}
-        \item \daima{face\_image}：上传人脸图，用于身份识别；
-        \item \daima{material\_image}：上传物资图，用于 YOLO 检测与计数；
-        \item \daima{inventory\_record}：上传最终库存变化记录。
-    \end{itemize}
-    服务端 \daima{tcp\_bridge\_node} 负责统一接收请求、转发到相应识别节点，并把结果再次封装为 JSON 响应。通信层还加入了超时和重连逻辑：当请求失败时，客户端会关闭旧连接并尝试重新建立 socket，这比每次都从头初始化整套流程更稳妥。
+本系统的核心需求可以概括为四条：
 
-    \begin{lstlisting}
+\begin{enumerate}
+    \item 操作前先完成身份确认，且只接受“恰好一张已知人脸”的结果；
+    \item 物资数量不靠用户手填，而是通过操作前后两次图像识别结果自动求差；
+    \item 客户端保持轻量，能在树莓派或普通 Linux 环境中直接运行；
+    \item 服务端需要能记录每次出入库，并提供一个便于检查结果的本地看板。
+\end{enumerate}
+
+围绕这些需求，项目把系统拆成客户端采集控制、网络通信、服务端识别、记录与展示四层。客户端只关心“什么时候拍、把图发给谁、如何提示用户下一步”；服务端负责“识别图像、返回结构化结果、写入库存流水”。这样划分后，各模块的接口比较稳定，调试时也容易定位问题。
+
+\begin{table}[H]
+    \centering
+    \caption{项目中的主要模块与分工}
+    \label{tab:modules}
+    {\small
+    \begin{tabularx}{\textwidth}{M{2.2cm}M{5.4cm}Y}
+        \toprule
+        层次 & 关键文件或节点 & 作用 \\
+        \midrule
+        客户端采集 & \code{camera\_node.py}、\code{camera\_backend.py} & 优先调用 \code{rpicam-still} 采集 JPEG，环境不支持时回退到 OpenCV。 \\
+        客户端流程 & \code{logic\_node.py}、\code{ui\_node.py} & 用状态机管理人脸识别、手动前态抓拍、完成按钮、后态抓拍和差分上传。 \\
+        网络协议 & \code{tcp\_client\_node.py}、\code{tcp\_bridge\_node.py}、\code{tcp\_protocol.py} & 用双长度前缀传输“UTF-8 JSON 头 + 可选二进制图像体”，默认图片格式改为 \code{webp} 以降低带宽占用。 \\
+        服务端识别 & \begin{tabular}[c]{@{}c@{}}\code{face\_recognize\_node.py}\\\code{material\_counter\_node.py}\end{tabular} & 分别完成人脸识别和 YOLO 物资计数，并通过 ROS2 topic 返回 JSON。 \\
+        记录展示 & \begin{tabular}[c]{@{}c@{}}\code{inventory\_records.csv}\\\code{inventory\_web\_node.py}\end{tabular} & 将出入库流水落盘，并在 \code{127.0.0.1:8600} 汇总展示库存状态。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
+
+\section{技术路线与选型依据}
+
+本项目涉及的技术点比较多，但它们并不是孤立堆叠的。整体原则是：客户端尽量轻，服务端集中推理；跨设备边界保持简单，服务端内部再用节点化方式拆分复杂任务；识别结果必须能进入库存流水，而不是只停留在画框展示。表~\ref{tab:tech-principles} 先概括各技术点的基本原理和采用理由。
+
+\begin{table}[H]
+    \centering
+    \caption{关键技术点的原理和选型理由}
+    \label{tab:tech-principles}
+    {\small
+    \begin{tabularx}{\textwidth}{M{2.4cm}Y Y}
+        \toprule
+        技术点 & 基本原理 & 本项目采用理由与优势 \\
+        \midrule
+        ROS2 节点通信 & ROS2 把功能拆成多个节点，节点之间通过 topic、service 或 action 交换消息。发布者和订阅者只依赖消息类型，不直接依赖彼此实现。 & 推理任务集中在服务端，适合用 ROS2 管理人脸识别、物资识别、TCP 网桥和看板节点。模块可以单独启动、单独替换，服务端最大单文件从旧版 \code{integrated\_server.py} 的 725 行下降到当前最大服务端节点 355 行。 \\
+        TCP 长连接 & TCP 提供可靠、有序的字节流。由于字节流本身没有消息边界，项目用 4 字节 JSON 长度和 4 字节二进制长度标明每条消息的头部与附件范围。 & 客户端不需要安装 ROS2，也不用处理 DDS 发现和跨网段配置；只要能发送压缩图片和 JSON 头就能接入服务端。当前协议只暴露 \code{face\_image}、\code{material\_image}、\code{inventory\_record} 三类请求，边界清楚。 \\
+        YOLO 检测 & YOLO 是单阶段目标检测方法，直接从整张图中预测目标框、类别和置信度。项目把同类检测框累加，得到每类物资数量。 & 相比逐个扫描二维码，YOLO 更适合“拍一张货架图后统计类别数量”。当前三类物资在第 31 轮达到 Precision 80.21\%、Recall 80.36\%、mAP50 87.74\%，已能支撑系统闭环演示。 \\
+        人脸识别门控 & \code{face\_recognition} 会把人脸转为特征编码，再用距离阈值与已知人脸库比较。距离越小，越可能是同一人。 & 库存记录必须绑定责任人。本项目要求画面中恰好一张已知人脸，才允许进入物资操作阶段，避免“未知人员”或“多人同时入镜”导致责任归属不清。 \\
+        有限状态机 & 状态机把流程拆成有限个状态，每个状态只允许特定输入和转移。UI 按钮状态由当前状态决定。 & 出入库动作天然有顺序：身份确认、前态拍摄、用户操作、后态拍摄、差分提交。状态机让用户不容易跳步，也让异常重试和超时处理更明确。 \\
+        CSV 与本地看板 & CSV 是追加式文本记录；Web 看板再周期性读取 CSV，聚合库存、最近事件和低库存状态。 & 课程项目阶段并发低、调试频繁，CSV 便于直接检查；看板补足展示能力，让老师或同学不用打开代码也能确认系统是否真正写入了库存流水。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
+
+为了避免“看起来合理但没有依据”的选型说明，表~\ref{tab:evidence} 汇总了仓库中可以直接核对的工程数据。部分指标不是严格性能测试，但能说明实现规模、部署成本和模型效果的变化方向。
+
+\begin{table}[H]
+    \centering
+    \caption{支撑技术选型的项目数据}
+    \label{tab:evidence}
+    {\small
+    \begin{tabularx}{\textwidth}{M{3.6cm}M{4.4cm}Y}
+        \toprule
+        指标 & 数值 & 说明 \\
+        \midrule
+        早期主线迭代次数 & \code{main} 分支 15 次提交 & 记录了从人脸、TCP、二维码到完整客户端/服务端和 YOLO 框架的演进。 \\
+        客户端第三方 Python 依赖 & 2 个：\code{numpy}、\code{opencv-python} & UI 使用标准库 \code{tkinter}，相机优先走 \code{rpicam-still}，因此客户端部署负担较小。 \\
+        当前 TCP 请求类型 & 3 类 & 分别对应身份识别、物资计数和库存记录，协议面没有暴露服务端内部 ROS2 细节。 \\
+        数据集实际图像数量 & 61 张 & 训练/验证/测试集分别为 36/18/7 张，覆盖 \code{cboard}、\code{dmj4310}、\code{m3508} 三类物资。 \\
+        较优训练指标 & mAP50 87.74\%，mAP50-95 76.15\% & 来自训练结果 CSV 中的第 31 轮记录。 \\
+        图像上传改造效果 & 平均 TCP 报文从 2.47 MB 降到 0.37 MB & 基于 11 张物资验证图和 2 张已知人脸图的实测，旧方案为 \code{base64+jpeg}，新方案为 \code{binary+webp}，平均降幅 84.53\%。 \\
+        单文件压力变化 & 服务端 725 行降至 355 行；客户端 533 行降至 398 行 & 对比旧版 \code{main} 分支的单体文件和当前最大模块文件，说明职责拆分后单个文件更容易阅读和维护。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
+
+除了“协议边界更清楚”之外，图像编码方式本身也直接影响分布式部署时的带宽占用。旧版客户端将 \code{jpeg} 字节流先做 \code{base64}，再嵌入 JSON；这样虽然实现简单，但会把图片体积额外放大约三分之一，而且服务端面对多条 TCP 长连接时，大部分流量都被字符串化图像占据。新版实现改成“JSON 头 + 二进制图像体”：JSON 头只保留 \code{request\_id}、\code{image\_format} 和字节长度，真实图像作为独立二进制附件发送，默认编码则调整为 \code{webp} 质量 75。这里优化的是 \emph{TCP 上传阶段}，并不改变服务端识别接口的业务语义。
+
+表~\ref{tab:encoding-benchmark} 给出了仓库内实际样本的对比数据。测试样本包含 \code{datasets/materials/images/val} 中可正常读取的 11 张物资图，以及 \code{server/assets/known\_face/} 中 2 张已知人脸图。旧方案按“\code{jpeg} 质量 90 + \code{base64} + 单长度头”计算总报文大小；新方案按“\code{webp} 质量 75 + 二进制附件 + 双长度头”计算。结果表明，两类场景的平均报文大小都下降到了原来的约五分之一到六分之一。
+
+\begin{table}[H]
+    \centering
+    \caption{旧图像编码与新图像编码的 TCP 报文大小对比}
+    \label{tab:encoding-benchmark}
+    {\small
+    \begin{tabularx}{\textwidth}{M{2.8cm}M{1.4cm}M{2.6cm}M{2.6cm}M{1.8cm}Y}
+        \toprule
+        样本类型 & 样本数 & 旧方案平均报文 & 新方案平均报文 & 平均降幅 & 说明 \\
+        \midrule
+        物资识别图像 & 11 & 2.43 MB & 0.37 MB & 85.22\% & 样本来自物资验证集，分辨率高、背景复杂，更接近货架计数场景。 \\
+        人脸识别图像 & 2 & 2.66 MB & 0.39 MB & 80.76\% & 样本来自已登记人脸库，人物构图集中，但原始分辨率差异较大。 \\
+        合并平均 & 13 & 2.47 MB & 0.37 MB & 84.53\% & 新方案在同一批样本上显著减小了跨设备传输流量。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
+
+从编码结构看，降幅的主要来源有两点。第一，旧方案的 JSON 体平均达到 2.47 MB，而新方案的 JSON 头在同一批样本上平均仅 161 B，说明把图像从 JSON 中剥离出来本身就消除了大部分冗余；第二，\code{webp} 在这些样本上的平均图像体积约为 0.37 MB，也明显小于旧方案中平均 1.85 MB 的 \code{jpeg} 字节流。因此，这次改动不仅降低了单次请求带宽，也更有利于服务端在多 TCP 连接并发时维持稳定吞吐。
+
+\section{系统总体结构}
+
+图~\ref{fig:system-arch-gpt} 是根据当前仓库模块生成的系统总体结构图。图中英文标签对应代码中的真实类名或节点名，便于和工程文件互相对照。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{system_architecture_gpt_image2}
+    \caption{系统总体结构图（gpt-image2 生成，按项目模块整理）}
+    \label{fig:system-arch-gpt}
+\end{figure}
+
+从架构上看，客户端和服务端的边界非常清楚。客户端侧包含 \code{CameraNode}、\code{Tkinter UI}、\code{LogicNode} 和 \code{TcpClientNode}。其中 \code{CameraNode} 负责持续维护最新画面，\code{LogicNode} 根据业务状态决定何时抓拍并发送请求，\code{TcpClientNode} 复用 TCP 连接向服务端提交 \code{face\_image}、\code{material\_image} 和 \code{inventory\_record} 三类请求。
+
+服务端侧以 \code{tcp\_bridge\_node} 为入口。它对外监听 TCP，对内把图片转成 ROS2 的 \code{sensor\_msgs/msg/Image} 发布到识别节点；人脸识别和物资识别结果再以 \code{std\_msgs/msg/String} 中的 JSON 返回。库存记录不进入模型节点，而是由 TCP 网桥在校验请求后直接追加到 CSV 文件。Web 看板节点轮询同一份 CSV，构建当前库存、低库存提示、最近事件和单物资详情。
+
+这种结构的好处不在于技术栈堆得多，而在于每层的压力被放在了合适的位置：树莓派只做采集和交互，服务器负责推理和汇总；客户端不用安装 ROS2，服务端又能保留 ROS2 对识别模块的组织能力。
+
+\section{项目运行流程}
+
+系统一次出入库操作的主链路如图~\ref{fig:workflow-gpt} 所示。这里最重要的设计是“先身份、再前态、再后态、最后差分”，而不是在操作过程中连续猜测用户是否已经拿取完成。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.68\textwidth]{project_workflow_gpt_image2}
+    \caption{项目主流程图（gpt-image2 生成，结合客户端状态机整理）}
+    \label{fig:workflow-gpt}
+\end{figure}
+
+客户端初始状态为 \code{idle}。用户点击 Start 后，状态切换到 \code{recognizing\_face}，程序每隔约 1 秒抓拍人脸图并发给服务端。只有当返回结果中 \code{total\_faces=1}，且唯一人脸名称不是 \code{unknown} 时，系统才记录操作者姓名并进入 \code{waiting\_camera\_move}。如果画面里没人、多人或未知人员，流程会继续重试直到超时。
+
+识别通过后，用户把摄像头对准物资区域并点击 \code{Capture Materials}。这一步是项目后期专门调整过的：早期尝试用画面稳定性自动判断前态抓拍时机，但在移动摄像头和现场遮挡时误差较大，因此改为手动触发。该选择牺牲了一点自动化，但显著降低了误拍概率，也让演示流程更可控。
+
+前态计数保存后，用户完成真实出入库操作并点击 Finish，客户端再拍摄后态图像。两次 \code{material\_image} 返回后，\code{compute\_inventory\_changes()} 对两份计数字典逐项求差。正差生成“入库”记录，负差生成“出库”记录；若差分为空，流程直接结束，不写入无意义流水。
+
+\section{关键实现}
+
+\subsection{轻量客户端与状态机}
+
+客户端现在是一个独立 Python 包，入口由 \code{client/pyproject.toml} 暴露，常用命令包括 \code{embedded-client}、相机检查入口和服务端连通性检查入口。它的技术原则是“端侧只保留必要交互”：摄像头负责取图，UI 负责显示和按钮，网络模块负责发请求，业务状态机决定下一步动作。这样做可以把树莓派上的环境压力控制住，当前客户端第三方依赖只有 \code{numpy} 和 \code{opencv-python} 两项，界面使用 Python 标准库里的 \code{tkinter}。
+
+相机后端采用自动选择策略。若环境中存在 \code{rpicam-still}，系统会用命令行直接输出 JPEG 到标准输出并在内存中解码；否则回退到 OpenCV 摄像头。选择 \code{rpicam-still} 的原因是树莓派新系统中它比直接打开 OpenCV 摄像头更稳定，回退路径则保证了普通 USB 摄像头也能用于开发调试。
+
+流程控制使用有限状态机。有限状态机的优点是每个阶段只开放当前合理的操作，例如人脸识别未通过时不能提交库存，前态未拍摄时不能点击 Finish。当前 \code{LogicNode} 的关键状态包括 \code{recognizing\_face}、\code{waiting\_camera\_move}、\code{capturing\_pre\_material}、\code{waiting\_finish}、\code{capturing\_post\_material}、\code{computing\_diff} 和 \code{submitting\_inventory}。相比旧版把 UI、相机、舵机和网络逻辑混在 \code{smart\_client.py} 的做法，现在最大客户端模块为 398 行，低于旧版客户端单文件 533 行，代码职责也更容易定位。
+
+\subsection{TCP 协议与跨设备边界}
+
+TCP 是面向连接的可靠字节流协议，适合在局域网内传输图像请求和结构化结果。但 TCP 只保证字节顺序，不保证“一次发送对应一次接收”，因此协议必须自己定义消息边界。本项目采用 4 字节大端长度前缀加 UTF-8 JSON 的格式：接收端先读固定 4 字节得到消息长度，再按长度读取完整 JSON。这样既避免粘包拆包问题，又保持消息内容便于调试。
+
+跨设备通信没有采用跨机器 ROS2，是因为 ROS2 的 DDS 发现机制在多网卡、校园网或树莓派网络环境中经常需要额外配置。项目把 ROS2 留在服务端内部，把客户端和服务端之间的边界收敛为 TCP，就把部署要求降到了“能连上 IP 和端口”。图片在客户端压缩为 JPEG 后转成 Base64 放入 JSON，服务端再解码成 OpenCV 图像；对课程项目而言，这比二进制私有协议更容易排错。
+
+\begin{lstlisting}[language={},caption={库存记录请求示例},label={lst:inventory-json}]
 {
   "type": "inventory_record",
   "request_id": "req-002",
@@ -295,117 +287,288 @@
     "time": "2026-04-25T21:30:00+08:00",
     "person": "huanghexiang",
     "action": "出库",
-    "items": [{"name": "cboard", "quantity": 2}]
+    "items": [
+      {"name": "cboard", "quantity": 2},
+      {"name": "m3508", "quantity": 1}
+    ]
   }
 }
-    \end{lstlisting}
+\end{lstlisting}
 
-    \textbf{方案对比：} 与“跨机器直接跑 ROS2”相比，当前方案不要求客户端具备 ROS2 环境，也不需要处理 DDS 配置、节点发现等额外问题；与“所有接口都改成 HTTP”相比，TCP 长连接对频繁小请求的处理更直接，而且与当前客户端状态机实现更贴合。因此，这种分布式解耦方式在异构设备协同时更容易落地。
+服务端支持三类请求：\code{face\_image}、\code{material\_image} 和 \code{inventory\_record}。其中前两类会被转发到识别节点，后一类会经过字段校验后写入 CSV。协议层还处理了 \code{INVALID\_JSON}、\code{INVALID\_IMAGE}、\code{INVALID\_INVENTORY}、\code{TIMEOUT} 等错误码，便于客户端给出明确失败原因。
 
-    \textbf{本节亮点：} 客户端已经被改造成独立 Python 包，意味着以后即使替换 UI 框架或部署平台，只要保留这三类 TCP 请求，服务端识别链路就能继续复用，系统的扩展成本会明显降低。
+\subsection{ROS2 服务端节点}
 
-    \subsection{物资识别模块（YOLO）}
+ROS2 的核心价值是把功能拆成节点，再用消息把节点连接起来。本项目服务端保留 ROS2 Humble 包结构，核心 launch 文件是 \code{tcp\_bridge.launch.py}，会同时启动物资识别、人脸识别、TCP 网桥和 Web 看板。TCP 网桥把外部请求转成 ROS2 图像消息，识别节点只订阅图像并发布 JSON 结果；库存记录和看板不直接依赖模型内部实现。
 
-    \textbf{原理：} 物资识别的核心任务是对单张图像中的目标进行检测和分类，再按类别统计数量。YOLO 检测模型能够在一次前向推理中同时完成目标定位和类别判断，因此适合在复杂背景下进行多目标计数。
+这种拆分的理由有两个。第一，服务端更适合集中安装模型库、ROS2 和人脸识别依赖，硬件资源也比客户端宽裕。第二，节点化可以降低单个文件的维护压力：旧版 \code{integrated\_server.py} 有 725 行，当前最大服务端节点 \code{tcp\_bridge\_node.py} 为 355 行，人脸、物资、看板分别落在独立文件中。代码总量并没有简单减少，因为系统功能增加了；但单个模块的职责更清楚，替换某个识别节点时不需要重写整个服务端。
 
-    \textbf{具体实现：} 项目训练脚本默认以 \daima{yolo11n.pt} 小模型为起点，在自建数据集上进行微调。当前数据集规模为训练集 37 张、验证集 19 张、测试集 8 张，类别包括 \daima{cboard}、\daima{dmj4310} 和 \daima{m3508} 三类。服务端 \daima{material\_counter\_node} 负责加载 \daima{weights/materials\_yolo/best.pt}，对输入图像执行推理，并返回各类别计数字典。单图预测示例中，系统已经能够输出 \daima{cboard: 2}、\daima{m3508: 1} 这样的计数结果。
+\subsection{YOLO 物资检测}
 
-    \textbf{方案对比：} 如果改用传统颜色阈值、边缘轮廓或模板匹配方法，在目标姿态变化、部分遮挡或背景杂乱时很容易失效，而且每增加一种物资就要手工重写一套规则。YOLO 虽然需要标注数据和训练过程，但一旦模型成型，对视角变化和复杂背景的适应能力明显更强，更适合后续扩展类别。
+YOLO 属于单阶段目标检测方法，它不先生成候选区域，而是直接在一次前向推理中预测目标框、类别和置信度。项目使用这种方法的原因，是物资管理更关心“画面中每类物资有几个”，不一定需要知道每个物体的唯一编号。识别节点收到图像后调用模型推理，再按类别累加检测框数量，最终返回类似 \code{\{"cboard": 2, "m3508": 1\}} 的计数字典。
 
-    \textbf{本节亮点：} 当前模型并没有一味追求大规模类别，而是先在三类典型物资上完成闭环验证。这样的策略使系统层与算法层能够同步推进：模型精度达到可用后，库存记录和看板能力立刻就能接上，而不是等到“算法彻底成熟”之后再重写整套系统。
+物资识别节点默认通过 \code{resolve\_default\_model\_path()} 查找权重，优先使用材料模型目录下的 \code{last.pt}，找不到时回退到 \code{best.pt}。这样部署时可以直接使用最新训练产物，同时保留按 mAP 选出的评估权重。当前模型在三类物资上第 31 轮达到 Precision 80.21\%、Recall 80.36\%、mAP50 87.74\%、mAP50-95 76.15\%。这些指标不是生产级大数据结论，但足以说明在现有小数据集上，YOLO 路线已经可以支持前后态差分演示。
 
-    \subsection{人脸识别模块}
+\subsection{人脸识别门控}
 
-    \textbf{原理：} 人脸识别部分的目标不是做复杂的人脸属性分析，而是在工作流开始前确认“当前操作者是否属于已登记人员”。因此该模块更适合采用已知人脸编码库加距离匹配的方式，而不是引入额外硬件或复杂的多阶段认证机制。
+人脸识别使用 \code{face\_recognition} 库。它的基本思路是先检测人脸位置，再把人脸转为向量编码，最后计算待识别人脸与已知人脸编码之间的距离；距离低于阈值时，认为两者更可能属于同一人。节点启动时读取 \code{server/assets/known\_face/}，为已登记人员生成编码；运行时默认匹配阈值为 \code{0.45}，检测模型为 \code{hog}。
 
-    \textbf{具体实现：} 服务端 \daima{face\_recognize\_node} 在启动时会读取 \daima{server/assets/known\_face/} 中的样本图片，为每个已知人员生成人脸编码。运行过程中，节点使用 \daima{face\_recognition} 库检测人脸位置、提取编码，并与已知编码库比较欧氏距离。当前默认阈值为 \daima{tolerance=0.45}，检测模型为 \daima{hog}。客户端只接受“恰好 1 张已知人脸”的结果，多人同时入镜或只识别出 \daima{unknown} 时，流程都会停留在重试状态。
+在本系统中，人脸识别不追求复杂的人事管理，而是承担流程门控职责。客户端只有在服务端返回 \code{total\_faces=1} 且唯一姓名不是 \code{unknown} 时才继续。这一规则比“识别到某个人就放行”更严格，可以过滤无人、多人和未知人员三类不可靠场景。它的优越性体现在库存记录上：每条流水都有明确操作者，后续追溯不需要再靠口头确认。
 
-    \textbf{方案对比：} 与手工输入姓名相比，人脸识别减少了人为漏填和冒名顶替的风险；与刷卡或指纹方案相比，它不需要额外硬件，且能直接复用现有摄像头采集链路。选择 \daima{hog} 而不是更重的 \daima{cnn} 方案，也是考虑到课程项目阶段更重视部署简洁和 CPU 侧响应速度。
+\subsection{库存记录与看板}
 
-    \textbf{本节亮点：} 人脸识别在本系统中承担的是“流程门控”而不是“炫技展示”。把身份确认放在物资识别之前，可以让后续每一条 CSV 记录天然带有责任归属，这一点对物资管理场景比单纯提升识别炫酷程度更有实际意义。
+库存记录的原理比较朴素：把一次差分结果拆成多条追加式流水，每一行都包含操作者、动作、物资名和数量。字段包括 \code{request\_id}、\code{record\_time}、\code{person}、\code{action}、\code{material\_name}、\code{quantity} 和 \code{received\_at}。CSV 方案虽然不适合高并发生产环境，但对课程项目非常实用：文件可直接打开检查，出错时也容易定位是哪一次请求写入了哪几行。
 
-    \subsection{库存差分、CSV 记录与 Web 看板}
+Web 看板由 \code{inventory\_web\_node.py} 提供，默认监听 \code{127.0.0.1:8600}。节点会定时读取 CSV，用 \code{build\_dashboard\_data()} 汇总库存数量、入库总量、出库总量、最近操作人、最近事件和低库存状态。页面通过普通 HTTP 接口和 SSE 刷新数据，适合在服务端本机演示，也避免默认暴露到外网。选择“CSV + 本地看板”的组合，是为了让记录既方便机器处理，也方便人在演示时立刻核对。
 
-    \textbf{原理：} 物资出入库本质上是一个“前后状态比较”问题。只要能得到操作前后两次识别结果，就可以通过计数字典求差，自动拆分出入库条目，再把结果落盘并可视化展示。
+\section{代码级实现对应关系}
 
-    \textbf{具体实现：} 客户端在两次物资识别之后调用差分逻辑，得到新增条目和减少条目。若差分为空，则直接判定本次流程无变化；若差分不为空，则构造 \daima{inventory\_record} 请求，并将 \daima{action} 字段分别设置为“入库”或“出库”。服务端收到后写入 \daima{server/assets/inventory\_records.csv}，字段包括请求编号、记录时间、人员、动作、物资名和数量。本地 \daima{inventory\_web\_node} 以 1 秒刷新周期轮询 CSV，并在 \daima{127.0.0.1:8600} 提供实时看板，用户可以查看当前库存数量、最近操作人、最近操作时间及某一物资的历史明细。
+为了让报告中的架构图、流程图和代码能够互相对应，表~\ref{tab:code-map} 汇总了主链路上的关键文件与函数。可以看到，当前实现不是把流程写在一个大脚本里，而是将“采集、状态、协议、识别、记录、展示”分别落在不同模块中。
 
-    \textbf{方案对比：} 直接手填 Excel 的方式虽然上手简单，但记录与现场操作之间没有自动关联，追溯性弱；若一开始就引入数据库、认证系统和复杂权限模型，又会明显抬高课程项目的实现难度。CSV 方案恰好位于两者之间：它足够轻量、可直接审计，也便于后续迁移到数据库。看板默认只在本机开放，不支持外网访问，这一设计同样是出于部署安全和调试便利的考虑。
+\begin{table}[H]
+    \centering
+    \caption{主流程与源码实现的对应关系}
+    \label{tab:code-map}
+    {\small
+    \begin{tabularx}{\textwidth}{M{3.0cm}M{4.8cm}Y}
+        \toprule
+        流程环节 & 关键实现 & 代码作用 \\
+        \midrule
+        UI 入口 & \code{ui\_node.py} / \code{ClientWindow} & 三个按钮分别调用开始、物资抓拍和完成接口，UI 不直接处理识别或库存判断。 \\
+        客户端状态机 & \code{logic\_node.py} / \code{LogicNode} & 用状态和 token 控制异步请求，避免旧请求返回后污染新一轮流程。 \\
+        差分计算 & \code{logic\_utils.py} & 对前后两次计数字典取并集逐项求差，正差生成入库项，负差生成出库项。 \\
+        请求构造 & \code{tcp\_client\_node.py} & 限定请求类型只能是 \code{face\_image}、\code{material\_image}、\code{inventory\_record}，并为每次请求生成 \code{request\_id}。 \\
+        TCP 编解码 & 客户端/服务端 \code{tcp\_protocol.py} & 用双长度前缀切分 JSON 头和二进制图像体，避免把图像内容展开成巨大的 \code{base64} 字符串。 \\
+        服务端分发 & \code{tcp\_bridge\_node.py} & 根据 \code{type} 分发到物资识别、人脸识别或库存写入逻辑。 \\
+        ROS2 关联返回 & \code{TcpBridgeNode} 的等待表 & 将 \code{request\_id} 写入 ROS2 图像消息的 \code{frame\_id}，再用同一 \code{frame\_id} 找回等待中的 TCP 请求。 \\
+        识别节点 & 物资节点与人脸节点 & 订阅图像 topic，分别发布物资计数字典和人脸识别结果 JSON。 \\
+        记录与看板 & 网桥节点与看板工具 & 前者追加 CSV，后者读取同一份 CSV 聚合当前库存和历史事件。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
 
-    \textbf{本节亮点：} 差分记录和看板结合之后，系统不再停留在“检测出几个框”，而是变成了一个真正能被人使用的业务闭环。尤其是点开看板后能够直接看到某类物资的最近操作轨迹，这让系统的输出不再只是算法结果，而是可被管理者解释和追踪的数据。
+客户端状态机的核心不是复杂算法，而是把每个业务动作的入口收紧。以 \code{ClientWindow} 中的开始、前态抓拍和结束按钮为例，它们最终会调用 \code{LogicNode.start\_operation()}、\code{capture\_material\_now()} 和 \code{finish\_operation()}。这些函数会先检查当前状态是否允许该动作，再启动异步图像请求。这样 UI 层不需要知道识别细节，只负责把用户意图交给 \code{LogicNode}。
 
-    \section{结果展示与项目亮点}
+\begin{lstlisting}[caption={客户端状态机的关键入口（整理自 logic\_node.py）},label={lst:logic-state}]
+start_operation():
+    reset workflow data
+    state = "recognizing_face"
 
-    \subsection{训练结果与模型表现}
+capture_material_now():
+    require state == "waiting_camera_move"
+    capture material snapshot as "pre"
 
-    从训练日志来看，模型最优结果并不出现在最后一轮，而是在第 31 个 epoch 左右达到较好平衡，这一点与当前数据集规模较小、样本波动较大的实际情况是一致的。表~\ref{tab:metrics} 汇总了本次训练中较有代表性的指标。
+finish_operation():
+    require state == "waiting_finish"
+    record finish time
+    capture material snapshot as "post"
+\end{lstlisting}
 
-    \begin{table}[H]
-        \centering
-        \caption{YOLO 模型较优阶段指标（第 31 轮）}
-        \label{tab:metrics}
-        \begin{tabular}{ccccc}
-            \toprule
-            Epoch & Precision & Recall & mAP50 & mAP50-95 \\
-            \midrule
-            31 & 0.8021 & 0.8036 & 0.8774 & 0.7615 \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
+差分计算则直接对应库存业务规则。代码没有把“入库”和“出库”写死在模型节点里，而是在客户端拿到两次物资计数后统一计算，这样模型只负责识别，库存语义由业务层处理。
 
-    \begin{figure}[H]
-        \centering
-        \subfigure[训练过程中的主要指标变化]{
-            \includegraphics[width=0.48\textwidth]{training_results}
-        }
-        \subfigure[归一化混淆矩阵]{
-            \includegraphics[width=0.48\textwidth]{confusion_matrix_normalized}
-        }
-        \caption{模型训练结果与类别区分情况}
-        \label{fig:training-and-confusion}
-    \end{figure}
+\begin{lstlisting}[caption={库存差分逻辑（整理自 logic\_utils.py）},label={lst:inventory-diff}]
+for name in sorted(set(pre_counts) | set(post_counts)):
+    pre_value = int(pre_counts.get(name, 0))
+    post_value = int(post_counts.get(name, 0))
+    delta = post_value - pre_value
+    if delta > 0:
+        added_items.append({"name": name, "quantity": delta})
+    elif delta < 0:
+        removed_items.append({"name": name, "quantity": -delta})
+\end{lstlisting}
 
-    图~\ref{fig:training-and-confusion} 左图展示了训练过程中损失、精度和召回率的整体变化趋势。可以看到，模型在中期已经具备较强的收敛能力，后续波动更多反映的是数据量有限带来的不稳定性，而不是模型完全不可用。右侧的归一化混淆矩阵则表明三类目标已经具备基本区分能力，当前结果足以支撑系统原型验证，但距离更大规模、更复杂场景下的稳定应用仍有提升空间。
+服务端的 \code{TcpBridgeNode} 是外部 TCP 请求和内部 ROS2 节点之间的转换层。它先读取 JSON 头和可选二进制附件，再看 \code{type} 字段：图片类请求会把二进制图片解码成 OpenCV 图像，再转成 ROS2 \code{Image} 消息发布；库存类请求则先校验字段，再写入 CSV。这里最关键的是 \code{request\_id} 的传递：网桥把它写入 \code{Image.header.frame\_id}，识别节点返回结果时保留同一个 \code{frame\_id}，网桥就能把异步 ROS2 结果对应回原来的 TCP 请求。
 
-    \subsection{单图推理与闭环验证}
+\begin{lstlisting}[caption={TCP 网桥分发逻辑（整理自 tcp\_bridge\_node.py）},label={lst:tcp-bridge}]
+if request_type == "material_image":
+    image = decode_image_payload(payload, attachment)
+    return submit_image_request(material_publisher, request_id, image)
 
-    \begin{figure}[H]
-        \centering
-        \includegraphics[width=0.72\textwidth]{prediction_example}
-        \caption{单张测试图像的物资检测结果示例}
-        \label{fig:prediction-example}
-    \end{figure}
+if request_type == "face_image":
+    image = decode_image_payload(payload, attachment)
+    return submit_image_request(face_publisher, request_id, image)
 
-    图~\ref{fig:prediction-example} 给出了单张测试图像的推理结果。从输出文件可以看到，该样例最终计数为 \daima{cboard: 2}、\daima{m3508: 1}。这类计数结果在本系统中并不会停留在算法展示层，而是会被直接送入库存差分模块，与操作后的计数做比较，最后生成结构化的入库或出库记录。换句话说，检测结果不仅是“看起来识别对了”，而是能继续驱动后续业务逻辑。
+if request_type == "inventory_record":
+    record = validate_inventory_payload(payload)
+    data = write_inventory_record(request_id, record)
+    return make_success_response("inventory_record_result", request_id, data)
+\end{lstlisting}
 
-    \subsection{项目亮点归纳}
+两个识别节点的代码结构也保持一致：订阅图像、转换格式、调用识别函数、发布 JSON。物资节点调用 YOLO 后返回 \code{counts} 和 \code{total\_detections}；人脸节点返回 \code{results}、\code{counts} 和 \code{total\_faces}。客户端只依赖这些结构化字段，而不依赖服务端的模型实现。
 
-    结合前文分析，可以把本项目当前阶段的亮点概括为以下四点。
+\begin{table}[H]
+    \centering
+    \caption{服务端识别结果字段与客户端使用方式}
+    \label{tab:result-fields}
+    {\small
+    \begin{tabularx}{\textwidth}{M{3.0cm}M{4.2cm}Y}
+        \toprule
+        响应来源 & 主要字段 & 客户端或看板用途 \\
+        \midrule
+        人脸识别节点 & \code{total\_faces}、\code{results}、\code{counts} & \code{extract\_single\_known\_person()} 要求唯一已知人脸，识别通过后记录操作者。 \\
+        物资识别节点 & \code{counts}、\code{total\_detections} & \code{extract\_material\_counts()} 提取物资计数字典，作为前态或后态。 \\
+        TCP 网桥节点 & \code{rows\_written}、\code{csv\_path}、\code{received\_at} & 客户端确认库存流水已经写入，失败时显示服务端错误码。 \\
+        看板聚合模块 & \code{stock}、\code{recent\_events}、\code{stats} & 看板把 CSV 流水转换成当前库存、最近事件和统计信息。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
 
-    \begin{enumerate}
-        \item \textbf{客户端脱离 ROS2，部署门槛更低。} 客户端已经被重构为独立 Python 程序，适合在树莓派或普通 Linux 主机上直接运行，服务端则保留 ROS2 节点化优势，两者边界清晰。
-        \item \textbf{身份确认前置，责任链天然闭合。} 系统在物资流程开始前就要求识别出唯一已知人脸，这比事后补填姓名的做法更可靠，也更便于追溯。
-        \item \textbf{前后帧差分代替人工登记。} 本项目没有要求用户手工输入每种物资的数量，而是通过前后两次识别结果求差，这在体验上更接近真实管理场景。
-        \item \textbf{本地看板提高了结果可解释性。} 记录不再只是躺在文件里，而是会以当前库存、最近操作人、详情时间线的形式持续展示，方便教师或同学直接观察系统效果。
-    \end{enumerate}
+\section{项目迭代记录}
 
-    从课程项目角度看，这几项亮点并不是互相孤立的。正因为前端采集、服务端识别、记录落盘和看板展示被串成了闭环，系统才摆脱了“单点算法演示”的局限，开始具备一个小型嵌入式应用应有的完整性。
+从 Git 历史看，项目并不是一开始就采用当前的 ROS2 服务端和纯 Python 客户端结构，而是经历了几轮比较明显的方案调整。仓库中没有名为 \code{master} 的分支，早期主线记录保存在 \code{main} 分支；当前 \code{detecotor} 分支则是在 \code{main} 的基础上重写识别框架并逐步收敛到现在的实现。把这段过程写进报告，有助于说明项目取舍不是凭空决定的，而是在联调中被问题推着往前走的。
 
-    \section{总结与展望}
+\begin{table}[H]
+    \centering
+    \caption{从旧版实现到当前系统的主要迭代}
+    \label{tab:iteration}
+    {\small
+    \begin{tabularx}{\textwidth}{M{2.0cm}M{3.6cm}Y}
+        \toprule
+        阶段 & 代表实现 & 迭代内容、理由与收益 \\
+        \midrule
+        基础验证 & 人脸、TCP、二维码识别 & 早期提交先完成单点能力：人脸识别、TCP 图像传输、二维码检测和基础记录。这样做的理由是先验证硬件、网络和识别库能否在目标环境运行，避免一开始就把问题混在完整系统里。 \\
+        单机闭环 & \code{system/main.py} & 旧版 \code{SystemUI} 把人脸识别、二维码扫描、舵机开关门和 CSV 记录放在一个 Tkinter 程序里。它适合快速演示，但业务、硬件和界面耦合较重，后续替换识别方式时改动面较大。 \\
+        客户端/服务端联调 & \begin{tabular}[c]{@{}c@{}}旧客户端\\旧服务端\end{tabular} & 系统被拆成客户端和服务端，协议支持 \code{RECOGNIZE}、\code{DETECT\_MATERIALS} 和 \code{DATA\_JSON}。这样把模型推理从端侧移到服务器，为树莓派减负，也形成了“认证、前态、后态、提交”的业务雏形。 \\
+        YOLO 框架独立化 & YOLO 独立目录 & 旧版主线新增独立的 YOLO 训练、验证、导出和 TCP 检测服务，并明确“不依赖物资 ID，只依赖类别和数量”的方向。它让系统从二维码逐件扫描，转向前后图像差分计数，减少标签维护成本。 \\
+        当前重构 & \code{client/}、\code{server/server/} & 当前分支将服务端改造成 ROS2 节点组合，将客户端改成不依赖 ROS2 的 Python 包；同时把协议统一为长度前缀 JSON，把库存记录落到固定 CSV，并由本地 Web 看板展示。优势是系统边界清晰，部署、调试和展示都更直接。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
 
-    本报告围绕一套分布式智能物资管理系统，梳理了其设计背景、运行逻辑、关键技术和实验结果。项目当前已经完成客户端采集、身份识别、物资识别、差分记录与 Web 看板展示的整条主链路，证明了“轻量客户端 + 集中式服务端 + 本地追溯看板”这一路线在课程项目中是可行的。更重要的是，这套系统并没有把重点放在单次识别炫技上，而是把识别能力放进了一个能真正完成登记和追踪的业务流程里。
+表~\ref{tab:iteration-reason} 进一步把几次关键取舍放在一起比较。可以看到，有些收益来自模型指标，有些收益来自工程结构；后者不一定能用单一准确率衡量，但可以通过依赖数量、单文件行数和协议暴露面来侧面说明。
 
-    当然，系统仍存在较明显的局限。当前检测模型只在三类物资上完成了验证，样本规模也较小；人脸库成员数量有限，尚未覆盖更复杂的光照和姿态变化；CSV 方案适合课程项目调试，但不适合高并发和多权限协同场景；操作前物资拍摄仍需人工点击，说明自动化程度还有进一步提升空间。
+\begin{table}[H]
+    \centering
+    \caption{关键迭代的选择理由与支撑依据}
+    \label{tab:iteration-reason}
+    {\small
+    \begin{tabularx}{\textwidth}{M{3.0cm}Y Y}
+        \toprule
+        迭代选择 & 为什么这样做 & 数据或工程依据 \\
+        \midrule
+        二维码扫描 $\rightarrow$ YOLO 差分 & 二维码适合精确到单件 ID，但需要贴码和维护；本项目的主要目标是有限类别物资的数量变化，因此更适合用前后图像计数。 & 当前数据集包含 3 类、61 张实际图片；第 31 轮 mAP50 达到 87.74\%。用户只需拍前态和后态，不需要逐件对准二维码。 \\
+        一体化服务端 $\rightarrow$ ROS2 节点 & 单体脚本前期开发快，但协议、模型、记录和界面混在一起后难以替换。ROS2 节点把人脸、物资、网桥和看板拆开。 & 旧版服务端单文件 725 行，当前最大服务端节点 355 行；各节点可以通过 launch 单独组合，调试时问题边界更清楚。 \\
+        端侧 ROS2 $\rightarrow$ TCP 客户端 & 树莓派端安装和维护 ROS2 成本较高，跨机器 DDS 发现也容易受网络环境影响。TCP 边界更稳定、更容易解释。 & 客户端第三方依赖只有 2 个，外部协议只暴露 3 类请求；服务端内部仍使用 ROS2，不牺牲后端模块化能力。 \\
+        自动前态判断 $\rightarrow$ 手动抓拍 & 摄像头移动、遮挡和光照变化会影响自动稳定性判断。手动 \code{Capture Materials} 让用户在画面对准后再确认前态。 & 这一项主要来自联调经验而非独立实验数据。它减少了“摄像头还没对准就抓拍”的流程风险，演示时更可控。 \\
+        只写 CSV $\rightarrow$ CSV + 看板 & CSV 便于检查，但展示当前库存和最近操作不直观。看板把流水转为可读状态。 & 看板直接从同一份 \code{inventory\_records.csv} 聚合数据，避免两套数据源不一致，也方便课堂展示。 \\
+        \bottomrule
+    \end{tabularx}
+    }
+\end{table}
 
-    后续若继续迭代，本项目比较值得投入的方向主要有三点：一是扩充数据集规模和类别数量，使检测模型从“原型可用”走向“场景可用”；二是将 CSV 记录逐步替换为数据库和权限控制模块，支持更规范的库存管理；三是继续优化前态抓拍策略和端侧实时性，在保证稳定的前提下提升自动化程度。对课程项目而言，这样的演进路线既现实，也具备持续扩展的价值。
+\subsection{从二维码扫描到视觉差分}
 
-    \newpage
-    \begin{thebibliography}{9}
-        \addcontentsline{toc}{section}{参考资料}
-        \bibitem{repo} 本项目代码仓库中的 \daima{README.md}、\daima{client/README.md}、\daima{server/README.md} 与交接文档 \daima{docs/client\_server\_handoff\_2026-04-27.md}。
-        \bibitem{ultralytics} Ultralytics Docs. \url{https://docs.ultralytics.com/}
-        \bibitem{ros2} ROS 2 Humble Documentation. \url{https://docs.ros.org/en/humble/}
-        \bibitem{face} face\_recognition Documentation. \url{https://face-recognition.readthedocs.io/en/latest/}
-    \end{thebibliography}
+旧版单机方案的物资确认主要依赖二维码。用户通过人脸认证后，系统打开门禁，再不断识别画面里的 QR 码，最后把扫描到的物资集合写入日志。这条路线的好处是结果确定：每个二维码天然带有物资名称或编号。但实际使用时，二维码需要提前制作、粘贴和维护；如果物资摆放角度不合适、标签磨损或多个标签同时入镜，扫描体验会变差。
+
+后续 \code{main} 分支中的 YOLO 方案改变了这个思路。系统不再要求每件物资带唯一 ID，而是识别画面里的类别和数量，再通过操作前后的计数差分得到本次变化。当前报告中的流程正是沿用了这个方向：用户只需要拍摄前态和后态，系统自动判断哪些物资增加、哪些物资减少。它牺牲了单件 ID 级别的追踪能力，但换来了更自然的操作方式，也更适合课程项目中有限类别物资的管理场景。
+
+\subsection{从一体化脚本到模块化服务}
+
+旧版 \code{integrated\_server.py} 已经具备较完整的服务端能力：加载已知人脸库，接收 \code{RECOGNIZE} 请求；初始化 \code{MaterialDetector}，处理 \code{DETECT\_MATERIALS}；再通过 \code{DATA\_JSON} 写入结构化交易日志。它的问题主要是文件过大，协议解析、模型调用、二维码工具、GUI 和日志写入都集中在一个脚本里，功能越多越难拆开调试。
+
+当前分支把这部分拆成了 ROS2 内部节点：人脸节点只做人脸，物资节点只做计数，TCP 网桥只负责请求转发和库存写入，看板节点只负责展示。这样的拆分让每个模块都可以单独启动、单独测试，也让后续替换模型或记录后端时更稳。
+
+\subsection{从硬件强绑定到轻量客户端}
+
+早期客户端代码直接在界面流程中控制舵机，并通过 \code{rpicam-still} 写入共享内存中的预览图再读取帧。这在树莓派上能快速跑通，但也让客户端对硬件环境的假设比较强。当前客户端保留了树莓派优先的思路，但把相机后端抽象为 \code{rpicam} 与 OpenCV 两种路径，并把网络、相机、状态机和 UI 分成不同文件。
+
+另一个重要变化是客户端脱离 ROS2。曾经尝试过把客户端也做成 ROS2 包，但这样会把树莓派端的安装和联调复杂度抬高。现在跨设备只走 TCP，客户端只要能采集图像并发送 JSON 请求即可；服务端内部再用 ROS2 管理识别节点。这个边界调整，是整个项目从“能跑”走向“好部署”的关键一步。
+
+\section{数据集与模型训练}
+
+当前数据集采用 YOLO 检测格式，类别顺序由 \code{datasets/materials/data.yaml} 和 \code{configs/classes.yaml} 共同约束，三类物资分别是 \code{cboard}、\code{dmj4310} 和 \code{m3508}。仓库中实际图像划分为训练集 36 张、验证集 18 张、测试集 7 张，共 61 张。虽然规模不大，但已经覆盖了课程项目阶段最需要验证的链路：采集、标注、训练、推理、计数和部署调用。
+
+训练脚本 \code{scripts/train.py} 以 \code{yolo11n.pt} 为起点进行微调，默认训练 100 个 epoch，保存周期为 10 个 epoch，并支持断点续训。模型导出脚本已经支持 ONNX 和 TorchScript，因此后续如果需要部署到更轻量的推理环境，可以沿着现有脚本继续扩展。
+
+\begin{table}[H]
+    \centering
+    \caption{物资检测数据集划分}
+    \label{tab:dataset-split}
+    \begin{tabular}{cccc}
+        \toprule
+        划分 & 图像数量 & 主要用途 & 类别数 \\
+        \midrule
+        训练集 & 36 & 更新模型参数 & 3 \\
+        验证集 & 18 & 观察训练过程与选择权重 & 3 \\
+        测试集 & 7 & 检查最终推理效果 & 3 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{YOLO 模型较优阶段指标（第 31 轮）}
+    \label{tab:metrics}
+    \begin{tabular}{ccccc}
+        \toprule
+        Epoch & Precision & Recall & mAP50 & mAP50-95 \\
+        \midrule
+        31 & 0.8021 & 0.8036 & 0.8774 & 0.7615 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \subfigure[训练指标变化]{
+        \includegraphics[width=0.48\textwidth]{training_results}
+    }
+    \subfigure[归一化混淆矩阵]{
+        \includegraphics[width=0.48\textwidth]{confusion_matrix_normalized}
+    }
+    \caption{模型训练结果与类别区分情况}
+    \label{fig:training}
+\end{figure}
+
+从图~\ref{fig:training} 可以看到，模型在前半段训练中提升很快，第 31 轮取得了较好的综合指标。后续指标存在一定波动，这与当前样本量偏小有关。对项目现阶段而言，这组结果足以支撑闭环演示；若要进入更稳定的长期使用，则需要继续补充不同角度、遮挡、反光和复杂背景下的样本。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{prediction_example}
+    \caption{单图物资检测与计数结果示例}
+    \label{fig:prediction}
+\end{figure}
+
+图~\ref{fig:prediction} 对应的计数输出为 \code{cboard: 2}、\code{m3508: 1}。在系统流程中，这类计数不会停留在“画框展示”层面，而是会被客户端保存为前态或后态计数字典，随后参与库存差分。也就是说，模型输出已经和业务动作连在一起。
+
+\section{系统亮点}
+
+\subsection{客户端不再依赖 ROS2}
+
+项目中一个很实用的改动，是把客户端从 ROS2 包改成独立 Python 程序。这样树莓派端只需要能运行摄像头、OpenCV 和 \code{tkinter}，不需要处理 ROS2 安装、工作空间编译和跨机器节点发现。服务端仍然保留 ROS2，客户端则用 TCP 接入，两边各自承担适合自己的复杂度。
+
+\subsection{身份识别前置}
+
+很多物资登记系统的问题不在数量，而在责任链断裂。本项目把人脸识别放在物资识别之前，并要求只有唯一已知人脸才能继续流程。后续 CSV 里的每一条记录都带有操作者姓名、操作时间和物资数量，查问题时不需要再反推“这次是谁登记的”。
+
+\subsection{前后差分代替手工填数}
+
+用户不需要手动输入“拿了几个、还了几个”，只要按流程拍摄前后两张图。系统根据两次 YOLO 计数自动拆分入库和出库条目。这个思路把视觉识别和库存管理连接起来，比单纯输出检测框更贴近实际使用。
+
+\subsection{看板让结果可检查}
+
+CSV 文件适合调试，但不适合展示。Web 看板补上了这一环：它把流水记录转换成当前库存、低库存提示、最近操作和单物资历史。老师或同学在演示时不必打开代码或 CSV，就能看到系统是否真的完成了记录闭环。
+
+\section{不足与后续改进}
+
+项目已经跑通主链路，但仍有不少可以继续打磨的地方。首先，物资检测目前只覆盖三类目标，数据集也偏小；下一步应优先扩充样本，特别是强反光、遮挡、相似背景和密集摆放场景。其次，人脸库成员较少，光照和姿态变化还需要更充分测试。第三，CSV 适合课程阶段，但如果要多人长期使用，后续应迁移到数据库，并补充账号权限、记录回滚和异常审核能力。
+
+自动化程度也还有提升空间。当前前态物资图由用户手动点击抓拍，这是为了稳定演示而做的取舍。后续可以在预览端加入更可靠的画面稳定检测或固定支架提示，在保证不误拍的前提下减少用户操作步骤。
+
+\section{总结}
+
+本项目完成了一套从图像采集到库存展示的分布式智能物资管理系统。它的价值不只在于 YOLO 能识别三类物资，也在于把识别、人脸门控、TCP 通信、库存差分、CSV 落盘和 Web 看板串成了一个完整流程。当前实现已经证明“轻量客户端 + 集中式服务端 + 本地可视化看板”的路线适合课程项目，也为后续扩展更多物资类别、数据库存储和更自动化的端侧交互留下了清晰接口。
+
+\newpage
+\begin{thebibliography}{9}
+    \addcontentsline{toc}{section}{参考资料}
+    \bibitem{repo} 本项目代码仓库中的 \code{README.md}、\code{client/README.md}、\code{server/README.md}、\code{docs/project\_plan.md} 与 \code{docs/client\_server\_handoff\_2026-04-27.md}。
+    \bibitem{ultralytics} Ultralytics Docs. \url{https://docs.ultralytics.com/}
+    \bibitem{ros2} ROS 2 Humble Documentation. \url{https://docs.ros.org/en/humble/}
+    \bibitem{face} face\_recognition Documentation. \url{https://face-recognition.readthedocs.io/en/latest/}
+\end{thebibliography}
 
 \end{document}

@@ -24,7 +24,7 @@ from server.tcp_protocol import (
     decode_image_payload,
     make_error_response,
     make_success_response,
-    receive_json_message,
+    receive_message,
     send_json_message,
     validate_inventory_payload,
 )
@@ -181,9 +181,9 @@ class TcpBridgeNode(Node):
             while not self._stop_event.is_set():
                 request_id: str | None = None
                 try:
-                    request = receive_json_message(client_socket)
+                    request, attachment = receive_message(client_socket)
                     request_id = self._resolve_request_id(request.get("request_id"))
-                    response = self._handle_request(request, request_id)
+                    response = self._handle_request(request, request_id, attachment)
                 except ConnectionClosedError:
                     break
                 except ProtocolError as exc:
@@ -208,7 +208,7 @@ class TcpBridgeNode(Node):
                 pass
             self.get_logger().info(f"TCP client disconnected: {peer}")
 
-    def _handle_request(self, request: dict[str, Any], request_id: str) -> dict[str, Any]:
+    def _handle_request(self, request: dict[str, Any], request_id: str, attachment: bytes) -> dict[str, Any]:
         request_type = request.get("type")
         payload = request.get("payload")
 
@@ -216,16 +216,18 @@ class TcpBridgeNode(Node):
             raise ProtocolError("INVALID_REQUEST", "type must be a non-empty string")
 
         if request_type == "material_image":
-            image = decode_image_payload(payload)
+            image = decode_image_payload(payload, attachment)
             result = self._submit_image_request(self.material_publisher, request_id, image, "material_image_result")
             return result
 
         if request_type == "face_image":
-            image = decode_image_payload(payload)
+            image = decode_image_payload(payload, attachment)
             result = self._submit_image_request(self.face_publisher, request_id, image, "face_image_result")
             return result
 
         if request_type == "inventory_record":
+            if attachment:
+                raise ProtocolError("INVALID_REQUEST", "inventory_record does not accept a binary attachment")
             record = validate_inventory_payload(payload)
             data = self._write_inventory_record(request_id, record)
             return make_success_response("inventory_record_result", request_id, data)

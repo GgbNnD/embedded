@@ -18,7 +18,8 @@ class ClientConfig:
     server_port: int = 9000
     connect_timeout_sec: float = 3.0
     request_timeout_sec: float = 15.0
-    jpeg_quality: int = 90
+    image_format: str = "webp"
+    image_quality: int = 75
     face_retry_interval_sec: float = 1.0
     face_timeout_sec: float = 60.0
     settle_delay_sec: float = 3.5
@@ -57,7 +58,20 @@ def build_argument_parser(
         parser.add_argument("--server-port", type=int, default=9000, help="Remote server TCP port")
         parser.add_argument("--connect-timeout-sec", type=float, default=3.0, help="TCP connect timeout")
         parser.add_argument("--request-timeout-sec", type=float, default=15.0, help="TCP request timeout")
-        parser.add_argument("--jpeg-quality", type=int, default=90, help="JPEG quality when sending images")
+        parser.add_argument(
+            "--image-format",
+            default="webp",
+            choices=["webp", "jpg", "png"],
+            help="Compressed image format used for TCP uploads. webp is smaller than base64+jpeg.",
+        )
+        parser.add_argument(
+            "--image-quality",
+            "--jpeg-quality",
+            dest="image_quality",
+            type=int,
+            default=75,
+            help="Compression quality when sending images. Higher means clearer but larger.",
+        )
 
     if include_workflow:
         parser.add_argument("--face-retry-interval-sec", type=float, default=1.0, help="Face retry interval")
@@ -95,7 +109,8 @@ def config_from_args(args: argparse.Namespace) -> ClientConfig:
         server_port=int(data["server_port"]),
         connect_timeout_sec=max(float(data["connect_timeout_sec"]), 0.1),
         request_timeout_sec=max(float(data["request_timeout_sec"]), 0.1),
-        jpeg_quality=max(1, min(int(data["jpeg_quality"]), 100)),
+        image_format=str(data["image_format"]).strip().lower(),
+        image_quality=max(1, min(int(data["image_quality"]), 100)),
         face_retry_interval_sec=max(float(data["face_retry_interval_sec"]), 0.1),
         face_timeout_sec=max(float(data["face_timeout_sec"]), 1.0),
         settle_delay_sec=max(float(data["settle_delay_sec"]), 0.0),

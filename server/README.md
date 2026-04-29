@@ -428,7 +428,9 @@ ros2 run server face_recognize_node --ros-args \
 `tcp_bridge_node` 使用长度前缀协议：
 
 - 一条 TCP 连接可以连续发送多条请求
-- 每条消息格式为：`4 字节大端长度 + UTF-8 JSON`
+- 每条消息格式为：`4 字节 JSON 长度 + 4 字节二进制附件长度 + UTF-8 JSON + 原始二进制附件`
+- `inventory_record` 没有二进制附件，图片请求默认推荐走 `webp` 二进制附件
+- 这次协议头从单长度升级成了“双长度头”，因此 `client` 和 `server` 需要同时升级部署
 
 支持的 `type`：
 
@@ -443,13 +445,29 @@ ros2 run server face_recognize_node --ros-args \
   "type": "material_image",
   "request_id": "req-001",
   "payload": {
+    "image_encoding": "binary",
+    "image_format": "webp",
+    "image_size_bytes": 48231
+  }
+}
+```
+
+随后紧跟 `48231` 字节的原始 `webp` 图像数据。
+
+`face_image` 的 `payload` 完全相同，只是 `type` 不同。
+
+如果你要保留历史 `payload` 结构，也可以继续在 JSON 里携带：
+
+```json
+{
+  "type": "face_image",
+  "request_id": "legacy-001",
+  "payload": {
     "image_base64": "<base64>",
     "image_format": "jpg"
   }
 }
 ```
-
-`face_image` 的 `payload` 完全相同，只是 `type` 不同。
 
 ### 8.2 inventory 请求
 
@@ -646,10 +664,12 @@ body = {
 encoded = json.dumps(body, ensure_ascii=False).encode("utf-8")
 
 with socket.create_connection(("127.0.0.1", 9000)) as sock:
-    sock.sendall(struct.pack("!I", len(encoded)) + encoded)
-    header = sock.recv(4)
-    length = struct.unpack("!I", header)[0]
-    response = sock.recv(length)
+    sock.sendall(struct.pack("!II", len(encoded), 0) + encoded)
+    header = sock.recv(8)
+    json_length, attachment_length = struct.unpack("!II", header)
+    response = sock.recv(json_length)
+    if attachment_length:
+        sock.recv(attachment_length)
     print(json.loads(response.decode("utf-8")))
 ```
 

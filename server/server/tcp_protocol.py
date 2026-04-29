@@ -12,8 +12,8 @@ import cv2
 import numpy as np
 
 
-LENGTH_PREFIX = struct.Struct("!I")
-SUPPORTED_IMAGE_FORMATS = {"jpg", "jpeg", "png"}
+MESSAGE_PREFIX = struct.Struct("!II")
+SUPPORTED_IMAGE_FORMATS = {"jpg", "jpeg", "png", "webp"}
 
 
 class ConnectionClosedError(RuntimeError):
@@ -53,13 +53,16 @@ def recv_exactly(sock: socket.socket, size: int) -> bytes:
     return bytes(chunks)
 
 
-def receive_json_message(sock: socket.socket) -> dict[str, Any]:
-    header = recv_exactly(sock, LENGTH_PREFIX.size)
-    (message_length,) = LENGTH_PREFIX.unpack(header)
+def receive_message(sock: socket.socket) -> tuple[dict[str, Any], bytes]:
+    header = recv_exactly(sock, MESSAGE_PREFIX.size)
+    message_length, attachment_length = MESSAGE_PREFIX.unpack(header)
     if message_length <= 0:
         raise ProtocolError("INVALID_LENGTH", "Message length must be greater than 0")
+    if attachment_length < 0:
+        raise ProtocolError("INVALID_LENGTH", "Attachment length must not be negative")
 
     body = recv_exactly(sock, message_length)
+    attachment = recv_exactly(sock, attachment_length) if attachment_length else b""
     try:
         payload = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -67,21 +70,28 @@ def receive_json_message(sock: socket.socket) -> dict[str, Any]:
 
     if not isinstance(payload, dict):
         raise ProtocolError("INVALID_REQUEST", "Top-level JSON payload must be an object")
+    return payload, attachment
+
+
+def receive_json_message(sock: socket.socket) -> dict[str, Any]:
+    payload, attachment = receive_message(sock)
+    if attachment:
+        raise ProtocolError("INVALID_REQUEST", "Expected a JSON-only message but received a binary attachment")
     return payload
 
 
-def send_json_message(sock: socket.socket, payload: dict[str, Any]) -> None:
+def send_message(sock: socket.socket, payload: dict[str, Any], attachment: bytes = b"") -> None:
     encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    sock.sendall(LENGTH_PREFIX.pack(len(encoded)) + encoded)
+    sock.sendall(MESSAGE_PREFIX.pack(len(encoded), len(attachment)) + encoded + attachment)
 
 
-def decode_image_payload(payload: Any) -> np.ndarray:
+def send_json_message(sock: socket.socket, payload: dict[str, Any]) -> None:
+    send_message(sock, payload)
+
+
+def decode_image_payload(payload: Any, image_bytes: bytes | None = None) -> np.ndarray:
     if not isinstance(payload, dict):
         raise ProtocolError("INVALID_PAYLOAD", "Payload must be an object")
-
-    image_base64 = payload.get("image_base64")
-    if not isinstance(image_base64, str) or not image_base64.strip():
-        raise ProtocolError("INVALID_IMAGE", "payload.image_base64 must be a non-empty string")
 
     image_format = payload.get("image_format")
     if image_format is not None:
@@ -89,10 +99,28 @@ def decode_image_payload(payload: Any) -> np.ndarray:
             supported = ", ".join(sorted(SUPPORTED_IMAGE_FORMATS))
             raise ProtocolError("INVALID_IMAGE_FORMAT", f"payload.image_format must be one of: {supported}")
 
-    try:
-        image_bytes = base64.b64decode(image_base64, validate=True)
-    except (ValueError, binascii.Error) as exc:
-        raise ProtocolError("INVALID_IMAGE", f"payload.image_base64 is not valid base64: {exc}") from exc
+    expected_size = payload.get("image_size_bytes")
+    if expected_size is not None:
+        if isinstance(expected_size, bool) or not isinstance(expected_size, int) or expected_size < 0:
+            raise ProtocolError("INVALID_IMAGE", "payload.image_size_bytes must be a non-negative integer")
+
+    if image_bytes:
+        image_encoding = payload.get("image_encoding")
+        if image_encoding is not None and image_encoding != "binary":
+            raise ProtocolError("INVALID_IMAGE", "payload.image_encoding must be 'binary' when a binary attachment is sent")
+        if expected_size is not None and expected_size != len(image_bytes):
+            raise ProtocolError("INVALID_IMAGE", "payload.image_size_bytes does not match the binary attachment size")
+    else:
+        image_base64 = payload.get("image_base64")
+        if not isinstance(image_base64, str) or not image_base64.strip():
+            raise ProtocolError(
+                "INVALID_IMAGE",
+                "payload.image_base64 must be a non-empty string when no binary attachment is sent",
+            )
+        try:
+            image_bytes = base64.b64decode(image_base64, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ProtocolError("INVALID_IMAGE", f"payload.image_base64 is not valid base64: {exc}") from exc
 
     if not image_bytes:
         raise ProtocolError("INVALID_IMAGE", "Decoded image bytes are empty")
@@ -100,7 +128,7 @@ def decode_image_payload(payload: Any) -> np.ndarray:
     buffer = np.frombuffer(image_bytes, dtype=np.uint8)
     image = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
     if image is None:
-        raise ProtocolError("INVALID_IMAGE", "Failed to decode image bytes as jpg/png")
+        raise ProtocolError("INVALID_IMAGE", "Failed to decode image bytes as jpg/png/webp")
     return np.ascontiguousarray(image)
 
 

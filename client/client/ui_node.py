@@ -236,7 +236,8 @@ def main(argv: list[str] | None = None) -> None:
         server_port=config.server_port,
         connect_timeout_sec=config.connect_timeout_sec,
         request_timeout_sec=config.request_timeout_sec,
-        jpeg_quality=config.jpeg_quality,
+        image_format=config.image_format,
+        image_quality=config.image_quality,
     )
     logic = LogicNode(
         camera=camera,
