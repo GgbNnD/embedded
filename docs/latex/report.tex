@@ -189,7 +189,20 @@
 	\label{fig:workflow}
 \end{figure}
 
-客户端初始状态为 \code{idle}。用户点击 Start 后进入 \code{recognizing\_face}，程序每隔约 1 秒抓拍人脸图发往服务端。只有当服务端返回 \code{total\_faces=1} 且唯一人脸不是 \code{unknown} 时，才记录操作者姓名并进入 \code{waiting\_camera\_move}。识别通过后，用户将摄像头对准物资区域，点击 \code{Capture Materials} 拍摄前态图像。用户完成实际借还操作后点击 Finish，客户端拍摄后态图像。两次 \code{material\_image} 返回后，\code{compute\_inventory\_changes()} 对两份计数字典逐项求差——正差生成入库条目，负差生成出库条目；若差分为空，流程直接结束，不写入无意义流水。
+客户端初始状态为 \code{idle}，一次完整流程可概括为以下几步：
+
+\begin{enumerate}
+	\item 用户点击 Start，客户端进入 \code{recognizing\_face}，每隔约 1 秒抓拍一张人脸图发往服务端；
+	\item 只有当服务端返回 \code{total\_faces=1} 且唯一人脸不是 \code{unknown} 时，才记录操作者姓名并进入 \code{waiting\_camera\_move}；
+	\item 用户将摄像头对准物资区域，点击 \code{Capture Materials}，拍摄前态图像；
+	\item 用户完成实际借还操作后点击 Finish，客户端拍摄后态图像；
+	\item 两次 \code{material\_image} 返回后，\code{compute\_inventory\_changes()} 对前后计数字典逐项求差：
+	      \begin{itemize}
+		      \item 正差生成入库条目；
+		      \item 负差生成出库条目；
+		      \item 若差分为空，则流程直接结束，不写入无意义流水。
+	      \end{itemize}
+\end{enumerate}
 
 前态拍摄采用手动触发而非自动判断，是因为早期尝试通过画面稳定性自动触发，但当前系统只有一个摄像头，在移动摄像头和现场遮挡场景下误拍率较高，改为手动确认后流程更可控。
 
@@ -222,13 +235,33 @@
 \subsection{客户端：轻量化与状态机}
 
 \begin{enumerate}
-	\item \textbf{仿ROS2的代码结构。}为保证客户端部署的轻量化，客户端未使用ROS2，但采用与ROS2类似的组织结构，分出logic\_node,capture\_node,ui\_node,tcp\_node,将不同的功能写在不同的节点中，最后再全部组织起来
+	\item \textbf{仿 ROS2 的分层结构。} 客户端最终部署在树莓派上，因此没有继续引入 ROS2 运行时，而是保留了类似 ROS2 的模块拆分方式：相机采集、业务流程、TCP 通信和图形界面分别放在 \code{camera\_node}、\code{logic\_node}、\code{tcp\_client\_node} 和 \code{ui\_node} 中。这样做的好处是，一方面客户端安装时只需要普通 Python 环境；另一方面服务端同学阅读代码时，仍然能快速对应到“节点职责”这一层次。
 
 	\item \textbf{相机采集原理。} 摄像头通过连续抓取视频帧为 UI 预览提供流式画面，同时支持在业务请求时捕获当前帧作为识别输入。由于客户端部署在树莓派上，且相机使用排针相机，因此相机后端采用自动选择策略：若环境中有 \code{rpicam-still}，通过命令行输出 JPEG 到标准输出并在内存中解码；否则回退到 OpenCV。选择 \code{rpicam-still} 的原因是树莓派新系统中它比直接打开 OpenCV 摄像头更稳定，回退路径保证普通 USB 摄像头也能用于开发调试。
 
 	\item \textbf{有限状态机原理。} 有限状态机（Finite State Machine, FSM）将系统行为拆为有限个状态，每个状态只允许特定的输入和状态转移。在本系统中，出入库操作天然具有顺序性——必须先完成身份认证才能拍摄物资、必须先拍前态才能拍后态——FSM 正好保证用户不能跳步执行。
 
-	\item \textbf{具体实现。} 流程控制基于 FSM，\code{LogicNode} 在 \code{client/client/logic\_node.py} 中实现，关键状态共 7 个：\code{recognizing\_face}、\code{waiting\_camera\_move}、\code{capturing\_pre\_material}、\code{waiting\_finish}、\code{capturing\_post\_material}、\code{computing\_diff} 和 \code{submitting\_inventory}。每个状态只开放当前合理的操作：\code{recognizing\_face} 状态仅允许 Start 按钮可用、\code{waiting\_camera\_move} 状态仅允许 Capture Materials 可用、\code{waiting\_finish} 状态仅允许 Finish 可用。UI 层不关心识别细节，只通过三个按钮将用户意图交给 \code{LogicNode}：
+	\item \textbf{具体实现。} 流程控制基于 FSM，\code{LogicNode} 在 \code{client/client/logic\_node.py} 中实现。核心状态包括：
+
+	      \begin{itemize}
+		      \item \code{recognizing\_face}；
+		      \item \code{waiting\_camera\_move}；
+		      \item \code{capturing\_pre\_material}；
+		      \item \code{waiting\_finish}；
+		      \item \code{capturing\_post\_material}；
+		      \item \code{computing\_diff}；
+		      \item \code{submitting\_inventory}。
+	      \end{itemize}
+
+	      每个状态只开放当前合理的操作：
+
+	      \begin{itemize}
+		      \item \code{recognizing\_face} 阶段只能等待身份确认；
+		      \item \code{waiting\_camera\_move} 阶段只允许用户手动拍摄前态物资；
+		      \item \code{waiting\_finish} 阶段才允许点击 Finish。
+	      \end{itemize}
+
+	      UI 层不直接处理识别细节，只负责把三个按钮事件交给 \code{LogicNode}：
 
 	      \begin{lstlisting}[caption={客户端状态机核心入口},label={lst:logic-state}]
 def start_operation():
@@ -256,13 +289,54 @@ for name in sorted(set(pre_counts) | set(post_counts)):
         added_items.append({"name": name, "quantity": delta})
     elif delta < 0:
         removed_items.append({"name": name, "quantity": -delta})
-\end{lstlisting}
+	\end{lstlisting}
+\end{enumerate}
+
+\subsection{客户端部署与自启动}
+
+客户端除了“能运行”，还要解决“每次上电后如何尽快进入可用状态”的问题。课程演示时如果树莓派每次重启都需要重新激活环境、手动输入启动命令，现场使用体验会很差，因此本项目把自启动也纳入了端侧实现的一部分。
+
+\begin{enumerate}
+	\item \textbf{解释器自动选择。} 自启动脚本位于 \code{client/scripts/start\_client\_autostart.sh}。考虑到开发阶段可能同时存在 conda、项目本地虚拟环境和系统 Python，脚本按以下顺序寻找解释器：
+
+	      \begin{enumerate}
+		      \item 环境变量 \code{CLIENT\_PYTHON\_BIN}；
+		      \item \code{client/.venv/bin/python}；
+		      \item \code{~/miniconda3/envs/alg/bin/python}；
+		      \item \code{python3}。
+	      \end{enumerate}
+
+	      这样部署机器即使环境略有差异，也不需要反复改脚本主体。
+
+	\item \textbf{启动前自检与日志。} 脚本在真正拉起客户端前，会把启动时间、实际使用的 Python 路径、解释器版本以及 \code{cv2}/\code{tkinter} 导入结果追加到 \code{client\_autostart.log}。这一设计看似简单，但在排查“手动能跑、开机自启却失败”这类问题时非常有用，因为多数故障并不来自业务逻辑，而是来自自启动时用错了解释器或缺少图形环境依赖。
+
+	\item \textbf{桌面自启动而不是后台服务。} 由于客户端界面使用 \code{tkinter}，它依赖图形桌面会话，不适合直接做成普通后台 \code{systemd} 服务。因此本项目采用树莓派桌面环境的 \code{~/.config/autostart/*.desktop} 方式拉起图形客户端，再配合 Raspberry Pi OS 的桌面自动登录，使设备上电后能自动进入桌面并显示客户端窗口。相比后台守护进程，这种方案更贴合课程项目的实际使用场景，原因主要有两点：
+
+	      \begin{itemize}
+		      \item 操作者需要立刻看到预览画面；
+		      \item 操作者需要直接看到状态提示和三个控制按钮。
+	      \end{itemize}
+
+	\item \textbf{实际收益。} 自启动机制补齐了系统部署链路中的最后一环。对于客户端而言，用户的操作被压缩为“上电、等待桌面进入、开始使用”，不需要了解 ROS2、Python 环境或命令行参数；对于维护者而言，服务端地址、端口和相机后端仍然保留在脚本入口处，后续更换网络环境时修改也比较集中。
 \end{enumerate}
 
 \subsection{TCP 协议与跨设备通信}
 
 \begin{enumerate}
-	\item \textbf{协议设计原理。} TCP 是面向连接的可靠字节流协议，保证数据按序、无差错到达，但 TCP 本身不提供消息边界——"一次 send"不一定对应"一次 recv"。因此应用层必须自定义分帧机制。常见的方案有三种：(1) 固定长度消息；(2) 分隔符（如换行符）；(3) 长度前缀。本系统选择方案 (3)，因为图片数据可能包含任意字节序列，分隔符不可靠；固定长度对大小不一的图像请求不适用。
+	\item \textbf{协议设计原理。} TCP 是面向连接的可靠字节流协议，保证数据按序、无差错到达，但 TCP 本身不提供消息边界，“一次 send”不一定对应“一次 recv”。因此应用层必须自定义分帧机制。常见方案有三种：
+
+	      \begin{enumerate}
+		      \item 固定长度消息；
+		      \item 分隔符方案，如换行符；
+		      \item 长度前缀。
+	      \end{enumerate}
+
+	      本系统选择方案 (3)，原因也比较直接：
+
+	      \begin{itemize}
+		      \item 图片数据可能包含任意字节序列，分隔符不可靠；
+		      \item 固定长度不适合大小不一的图像请求。
+	      \end{itemize}
 
 	\item \textbf{双长度前缀格式。} 每条消息格式为"4 字节 JSON 长度（大端）+ 4 字节附件长度（大端）+ UTF-8 JSON 头 + 可选二进制图像体"。收端先读 8 字节固定头得到两段长度，再按长度分别读取 JSON 和附件。JSON 头无换行符、保持紧凑，图像体作为独立二进制附件发送，不再将图片 \code{base64} 嵌入 JSON。
 
@@ -294,7 +368,13 @@ def send_message(sock, payload, attachment=b""):
                  + encoded + attachment)
 \end{lstlisting}
 
-	\item \textbf{请求分发。} 得益于校园网的存在，server端和client端只需要在同一个校网环境下即可进行tcp通信，不需要在同一个地点。服务端支持三类请求，\code{TcpBridgeNode} 根据 \code{type} 字段分发：
+	\item \textbf{请求分发。} 得益于校园网的存在，server 端和 client 端只需要处于同一个校网环境下即可进行 TCP 通信，不需要放在同一个地点。服务端支持三类请求，\code{TcpBridgeNode} 根据 \code{type} 字段分发：
+
+	      \begin{itemize}
+		      \item \code{material\_image}：发送到物资识别节点；
+		      \item \code{face\_image}：发送到人脸识别节点；
+		      \item \code{inventory\_record}：直接校验并写入库存流水。
+	      \end{itemize}
 
 	      \begin{lstlisting}[caption={TCP 网桥分发逻辑},label={lst:tcp-bridge-dispatch}]
 if request_type == "material_image":
@@ -311,13 +391,61 @@ if request_type == "inventory_record":
     return make_success_response("inventory_record_result", request_id, data)
 \end{lstlisting}
 
-	\item \textbf{传输优化。} 统计数据显示，相比旧版 \code{base64 + jpeg} 方案，新协议在 13 张测试样本（11 张物资图 + 2 张人脸图）上，平均 TCP 报文从 2.47 MB 降至 0.37 MB，降幅 84.53\%。
+	\item \textbf{传输优化与实测。} 当前客户端默认将图片编码为 \code{webp}，并以二进制附件直接挂在 TCP 报文后面；服务端在 \code{decode\_image\_payload()} 中同时兼容旧版 \code{base64 + jpeg} 结构，便于平滑升级。为了验证改动是否确实减少了网络负担，本文选取仓库中的 13 张样本图（11 张物资图、2 张人脸图），按两种协议格式重新打包并统计完整 TCP 报文大小。两种方案分别为：
+
+	      \begin{itemize}
+		      \item 旧方案：JPEG 质量 90，并写入 JSON 的 \code{image\_base64} 字段；
+		      \item 新方案：当前默认参数，即 WebP 质量 75 + 二进制附件。
+	      \end{itemize}
+
+	      结果如图~\ref{fig:transport-compare} 和表~\ref{tab:transport-compare} 所示：总体平均报文由 2.12 MB 降至 0.28 MB，降幅 87.01\%。这个优化的核心不只是“换成了 WebP”，更重要的是：
+
+	      \begin{itemize}
+		      \item 避免了 Base64 带来的额外膨胀；
+		      \item 把 JSON 头和图像体分开处理，使服务端解析路径更清晰。
+	      \end{itemize}
 \end{enumerate}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.88\textwidth]{transmission_comparison}
+	\caption{旧协议与新协议的平均 TCP 报文大小对比}
+	\label{fig:transport-compare}
+\end{figure}
+
+\begin{table}[H]
+	\centering
+	\caption{传输优化实测结果}
+	\label{tab:transport-compare}
+	\begin{tabular}{cccc}
+		\toprule
+		样本集合 & 旧协议均值 / MB & 新协议均值 / MB & 降幅 \\
+		\midrule
+		物资图（11 张） & 2.05 & 0.26 & 87.40\% \\
+		人脸图（2 张）  & 2.53 & 0.37 & 85.28\% \\
+		总体（13 张）   & 2.12 & 0.28 & 87.01\% \\
+		\bottomrule
+	\end{tabular}
+\end{table}
 
 \subsection{服务端：分布式多客户端并发}
 
 \begin{enumerate}
-	\item \textbf{并发模型原理。} 服务端需要同时处理来自多个树莓派客户端的请求。常见的并发模型有三种：(1) 单线程轮询（\code{select/poll}），适合 IO 密集型场景，但需要手动维护状态机；(2) 线程池模型，主线程 accept 后将连接交给线程池中的工作线程，适合请求耗时较均匀的场景；(3) 一线程一连接模型，每个 TCP 连接分配一个独立线程，连接间天然隔离，编程模型简单。本系统选择方案 (3)，因为课程项目阶段客户端数量有限（$< 10$ 个），且每个连接的识别请求耗时主要由远端模型推理决定，线程间隔离可以避免某个慢请求阻塞其他客户端。
+	\item \textbf{并发模型原理。} 服务端需要同时处理来自多个树莓派客户端的请求。常见并发模型有三种：
+
+	      \begin{enumerate}
+		      \item 单线程轮询（\code{select/poll}），适合 IO 密集型场景，但需要手动维护状态机；
+		      \item 线程池模型，主线程 accept 后将连接交给线程池中的工作线程，适合请求耗时较均匀的场景；
+		      \item 一线程一连接模型，每个 TCP 连接分配一个独立线程，连接间天然隔离，编程模型简单。
+	      \end{enumerate}
+
+	      本系统选择方案 (3)，主要基于以下考虑：
+
+	      \begin{itemize}
+		      \item 课程项目阶段客户端数量有限（$< 10$ 个）；
+		      \item 每个连接的识别请求耗时主要由远端模型推理决定；
+		      \item 线程间隔离可以避免某个慢请求阻塞其他客户端。
+	      \end{itemize}
 
 	\item \textbf{多线程 TCP 接收循环。} 主线程在端口上执行 \code{accept()} 阻塞等待新连接。每当新客户端接入，\code{TcpBridgeNode} 创建一个守护线程运行 \code{\_client\_loop()}，该线程内循环接收消息、处理请求并返回响应。\code{MultiThreadedExecutor} 确保 ROS2 回调在多线程环境下安全执行：
 
@@ -353,7 +481,13 @@ class TcpBridgeNode(Node):
             send_json_message(client_socket, response)
 \end{lstlisting}
 
-	\item \textbf{连接管理与健康监控。} 为防止资源耗尽，系统实现了三个关键机制：(1) 连接上限控制——新增 \code{max\_connections} 参数（默认 10），accept 时检查当前连接数，超出则拒绝新连接并关闭 socket；(2) 每连接统计跟踪——使用 \code{ClientSession} 数据类记录每个连接的建立时间、请求次数、收发字节量和最后活跃时间；(3) 定时健康报告——每 30 秒输出一次连接总览日志，便于运维排查：
+	\item \textbf{连接管理与健康监控。} 为防止资源耗尽，系统实现了三个关键机制：
+
+	      \begin{enumerate}
+		      \item \textbf{连接上限控制。} 新增 \code{max\_connections} 参数（默认 10），accept 时检查当前连接数，超出则拒绝新连接并关闭 socket；
+		      \item \textbf{每连接统计跟踪。} 使用 \code{ClientSession} 数据类记录每个连接的建立时间、请求次数、收发字节量和最后活跃时间；
+		      \item \textbf{定时健康报告。} 每 30 秒输出一次连接总览日志，便于运维排查。
+	      \end{enumerate}
 
 	      \begin{lstlisting}[caption={连接管理与会话跟踪},label={lst:connection-mgmt}]
 @dataclass
@@ -400,7 +534,21 @@ def _log_health_report(self):
 \begin{enumerate}
 	\item \textbf{节点模型原理。} ROS2 的节点模型将功能拆为独立进程或线程，节点之间通过 topic（发布/订阅）、service（请求/响应）或 action（带反馈的长时间任务）交换消息。发布者和订阅者只依赖消息类型，不直接依赖彼此实现，天然支持模块替换。
 
-	\item \textbf{服务端节点划分。} 服务端保留 ROS2 Humble 包结构，核心 launch 文件 \code{tcp\_bridge.launch.py} 同时启动四个节点：物资识别节点、人脸识别节点、TCP 网桥和 Web 看板。TCP 网桥将外部请求转为 ROS2 图像消息，识别节点订阅图像并发布 JSON 结果。拆分的主要收益有两点：一是服务端硬件资源比客户端宽裕，适合集中安装模型库和人脸识别依赖；二是节点化降低单个文件维护压力——旧版 \code{integrated\_server.py} 725 行，当前最大服务端节点 \code{tcp\_bridge\_node.py} 约 410 行，人脸节点 \code{face\_recognize\_node.py} 99 行。
+	\item \textbf{服务端节点划分。} 服务端保留 ROS2 Humble 包结构，核心 launch 文件 \code{tcp\_bridge.launch.py} 同时启动四个节点：
+
+	      \begin{itemize}
+		      \item 物资识别节点；
+		      \item 人脸识别节点；
+		      \item TCP 网桥；
+		      \item Web 看板。
+	      \end{itemize}
+
+	      TCP 网桥将外部请求转为 ROS2 图像消息，识别节点订阅图像并发布 JSON 结果。拆分的主要收益有两点：
+
+	      \begin{itemize}
+		      \item 服务端硬件资源比客户端宽裕，适合集中安装模型库和人脸识别依赖；
+		      \item 节点化降低单个文件维护压力。旧版 \code{integrated\_server.py} 725 行，当前最大服务端节点 \code{tcp\_bridge\_node.py} 约 410 行，人脸节点 \code{face\_recognize\_node.py} 99 行。
+	      \end{itemize}
 
 	\item \textbf{请求关联机制。} 网桥与识别节点之间通过 \code{request\_id} 关联异步响应：网桥将 \code{request\_id} 写入 \code{Image.header.frame\_id}，识别节点返回结果时保留同一 \code{frame\_id}，网桥据此在等待表（\code{\_pending} 字典）中找到对应的 TCP 请求并返回结果。超时保护由 \code{threading.Event.wait(timeout)} 实现，默认 15 秒。
 
@@ -453,9 +601,25 @@ def image_callback(self, msg):
 \subsection{人脸识别门控}
 
 \begin{enumerate}
-	\item \textbf{人脸编码比对原理。} \code{face\_recognition} 库基于 dlib 的深度学习模型，将人脸图像映射为 128 维特征向量（face encoding）。同一人的不同照片在编码空间中距离较近（欧氏距离通常 $< 0.6$），不同人的编码距离明显更大。识别过程分三步：(1) 用 HOG（Histogram of Oriented Gradients）或 CNN 检测人脸位置；(2) 将检测到的人脸区域输入编码网络得到 128 维向量；(3) 计算待识别人脸编码与库中已知编码的欧氏距离，取最小距离者，若低于阈值则匹配。已知人脸库由 \code{server/server/face\_database.py} 中的 \code{load\_known\_face\_database()} 从磁盘加载并预编码。
+	\item \textbf{人脸编码比对原理。} \code{face\_recognition} 库基于 dlib 的深度学习模型，将人脸图像映射为 128 维特征向量（face encoding）。同一人的不同照片在编码空间中距离较近（欧氏距离通常 $< 0.6$），不同人的编码距离明显更大。识别过程可分为三步：
 
-	\item \textbf{门控规则。} \code{FaceRecognizeNode} 在 \code{server/server/face\_recognize\_node.py} 中实现，订阅 \code{/face\_recognize/image} 话题，在 \code{image\_callback()} 中调用 \code{recognize\_faces()} 进行编码比对，返回识别结果、计数字典和总人脸数。客户端只有在服务端返回 \code{total\_faces=1} 且唯一姓名不是 \code{unknown} 时才继续。这条规则可以过滤三种不可靠场景：(1) 画面中无人——可能是摄像头未对准；(2) 画面中有多人——无法确定操作者；(3) 画面中的人不在已知库中——无权限。后续 CSV 中的每条记录都带有操作者姓名，追溯时不需要再反推"这次是谁登记的"。
+	      \begin{enumerate}
+		      \item 用 HOG（Histogram of Oriented Gradients）或 CNN 检测人脸位置；
+		      \item 将检测到的人脸区域输入编码网络，得到 128 维向量；
+		      \item 计算待识别人脸编码与库中已知编码的欧氏距离，取最小距离者，若低于阈值则匹配。
+	      \end{enumerate}
+
+	      已知人脸库由 \code{server/server/face\_database.py} 中的 \code{load\_known\_face\_database()} 从磁盘加载并预编码。
+
+	\item \textbf{门控规则。} \code{FaceRecognizeNode} 在 \code{server/server/face\_recognize\_node.py} 中实现，订阅 \code{/face\_recognize/image} 话题，在 \code{image\_callback()} 中调用 \code{recognize\_faces()} 进行编码比对，返回识别结果、计数字典和总人脸数。客户端只有在服务端返回 \code{total\_faces=1} 且唯一姓名不是 \code{unknown} 时才继续。这条规则可以过滤以下几种不可靠场景：
+
+	      \begin{itemize}
+		      \item 画面中无人，可能是摄像头未对准；
+		      \item 画面中有多人，无法确定操作者；
+		      \item 画面中的人不在已知库中，说明当前无权限。
+	      \end{itemize}
+
+	      后续 CSV 中的每条记录都带有操作者姓名，追溯时不需要再反推“这次是谁登记的”。
 
 	      \begin{lstlisting}[caption={人脸识别节点回调逻辑（\code{face\_recognize\_node.py}）},label={lst:face-recognize}]
 def image_callback(self, msg):
@@ -482,7 +646,19 @@ def image_callback(self, msg):
 \subsection{库存记录与看板}
 
 \begin{enumerate}
-	\item \textbf{记录原理。} 库存记录将一次差分结果拆为多条追加式流水，每行包含 \code{request\_id}、\code{record\_time}、\code{person}、\code{action}（"入库"或"出库"）、\code{material\_name}、\code{quantity} 和 \code{received\_at}。\code{TcpBridgeNode} 的 \code{\_write\_inventory\_record()} 方法负责将校验后的库存流水追加到 CSV 文件，使用 \code{\_csv\_lock} 线程锁保护文件写入，防止多客户端并发写入导致数据交错：
+	\item \textbf{记录原理。} 库存记录将一次差分结果拆为多条追加式流水，每行包含以下字段：
+
+	      \begin{itemize}
+		      \item \code{request\_id}；
+		      \item \code{record\_time}；
+		      \item \code{person}；
+		      \item \code{action}（“入库”或“出库”）；
+		      \item \code{material\_name}；
+		      \item \code{quantity}；
+		      \item \code{received\_at}。
+	      \end{itemize}
+
+	      \code{TcpBridgeNode} 的 \code{\_write\_inventory\_record()} 方法负责将校验后的库存流水追加到 CSV 文件，使用 \code{\_csv\_lock} 线程锁保护文件写入，防止多客户端并发写入导致数据交错：
 
 	      \begin{lstlisting}[caption={CSV 库存记录写入（\code{tcp\_bridge\_node.py}）},label={lst:csv-write}]
 def _write_inventory_record(self, request_id, record):
@@ -623,15 +799,19 @@ def _write_inventory_record(self, request_id, record):
 
 \subsection{系统特点}
 
-\textbf{1. ros2组织代码。} 
+从课程项目的完成度来看，当前系统有以下几个比较明确的特点：
 
-\textbf{2. 单样本的人脸识别。} 
+\begin{enumerate}
+	\item \textbf{服务端内部结构清晰。} 服务端继续使用 ROS2 来组织功能模块，人脸识别、物资计数、TCP 网桥和库存看板互相解耦。相比早期“大脚本包办一切”的写法，现在更容易单独调试某个环节，也更方便后续替换模型或新增接口。
 
-\textbf{3. 客户端轻量化。} 
+	\item \textbf{人脸门控策略简单但实用。} 本系统没有追求复杂的考勤式人脸系统，而是抓住“出入库必须绑定责任人”这一核心目标，采用“恰好一张已知人脸才允许继续”的门控规则。对实验室场景来说，这个策略实现成本低、行为边界清楚，足以满足谁在操作物资的追溯需求。
 
-\textbf{4. 多客户端并发处理。} 服务端 TCP 网桥采用一线程一连接模型，主线程 \code{accept} 后将连接交给独立守护线程，各连接之间互不干扰。配合连接上限、会话统计和定时健康报告，系统具备基本的分布式部署能力——多个实验室门禁点的树莓派可以同时接入同一服务端。
+	\item \textbf{客户端部署门槛较低。} 客户端脱离 ROS2 后，端侧只需普通 Python 依赖即可运行，并能在树莓派上优先调用 \code{rpicam-still}。再结合上一节的桌面自启动设计，使用者不需要理解 ROS2 工作区、DDS 或复杂命令行，部署难度明显下降。
 
-\textbf{5. tcp无线通信} 减少了部署的空间难度
+	\item \textbf{具备基础的多客户端并发能力。} 服务端 TCP 网桥采用一线程一连接模型，主线程 \code{accept} 后将连接交给独立守护线程，各连接之间互不干扰。配合连接上限、会话统计和定时健康报告，系统已经具备基本的分布式部署能力，多个实验室门禁点的树莓派可以同时接入同一服务端。
+
+	\item \textbf{跨设备通信更贴合现场布置。} 客户端与服务端之间只依赖 TCP，不要求跨机器 ROS2 通信，也不要求设备必须放在同一张桌子上。对于实验室这种“树莓派靠近物资柜，推理主机放在别处”的场景，网络拓扑更灵活，传输优化后的带宽占用也更容易接受。
+\end{enumerate}
 
 \subsection{不足与改进方向}
 
@@ -640,8 +820,8 @@ def _write_inventory_record(self, request_id, record):
 \begin{enumerate}
 	\item 物资检测目前只覆盖三类目标，数据集 61 张偏小。后续应扩充样本，补充强反光、遮挡、相似背景和密集摆放场景；
 	\item 人脸库成员较少，光照和姿态变化需要更充分测试；
-	\item CSV 存储不适合长期使用，多人长期使用应迁移到如sql之类的数据库，并补充权限控制和异常审核；
-	\item 当前只有一个摄像头，权衡之下物资拍摄仍需手动触发，后续可使用两个摄像头，一个用于人脸拍摄，一个用于物资拍摄
+	\item CSV 存储不适合长期使用，多人长期使用时应迁移到 SQL 类数据库，并补充权限控制、异常审核和备份机制；
+	\item 当前只有一个摄像头，权衡之下物资拍摄仍需手动触发；后续可使用双摄方案，一个用于人脸拍摄，一个用于物资拍摄；
 	\item 当前一线程一连接模型在客户端数量 $> 50$ 时线程开销较大，未来可考虑改用 \code{asyncio} 或线程池模型。
 \end{enumerate}
 

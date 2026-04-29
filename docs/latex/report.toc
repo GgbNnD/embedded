@@ -1,27 +1,28 @@
-\contentsline {section}{摘要}{1}{section*.1}%
-\contentsline {section}{\numberline {1}项目背景}{4}{section.1}%
-\contentsline {section}{\numberline {2}需求与总体思路}{4}{section.2}%
-\contentsline {section}{\numberline {3}技术路线与选型依据}{5}{section.3}%
-\contentsline {section}{\numberline {4}系统总体结构}{8}{section.4}%
-\contentsline {section}{\numberline {5}项目运行流程}{9}{section.5}%
-\contentsline {section}{\numberline {6}关键实现}{11}{section.6}%
-\contentsline {subsection}{\numberline {6.1}轻量客户端与状态机}{11}{subsection.6.1}%
-\contentsline {subsection}{\numberline {6.2}TCP 协议与跨设备边界}{11}{subsection.6.2}%
-\contentsline {subsection}{\numberline {6.3}ROS2 服务端节点}{12}{subsection.6.3}%
-\contentsline {subsection}{\numberline {6.4}YOLO 物资检测}{13}{subsection.6.4}%
-\contentsline {subsection}{\numberline {6.5}人脸识别门控}{13}{subsection.6.5}%
-\contentsline {subsection}{\numberline {6.6}库存记录与看板}{13}{subsection.6.6}%
-\contentsline {section}{\numberline {7}代码级实现对应关系}{14}{section.7}%
-\contentsline {section}{\numberline {8}项目迭代记录}{16}{section.8}%
-\contentsline {subsection}{\numberline {8.1}从二维码扫描到视觉差分}{18}{subsection.8.1}%
-\contentsline {subsection}{\numberline {8.2}从一体化脚本到模块化服务}{19}{subsection.8.2}%
-\contentsline {subsection}{\numberline {8.3}从硬件强绑定到轻量客户端}{19}{subsection.8.3}%
-\contentsline {section}{\numberline {9}数据集与模型训练}{19}{section.9}%
-\contentsline {section}{\numberline {10}系统亮点}{21}{section.10}%
-\contentsline {subsection}{\numberline {10.1}客户端不再依赖 ROS2}{21}{subsection.10.1}%
-\contentsline {subsection}{\numberline {10.2}身份识别前置}{21}{subsection.10.2}%
-\contentsline {subsection}{\numberline {10.3}前后差分代替手工填数}{22}{subsection.10.3}%
-\contentsline {subsection}{\numberline {10.4}看板让结果可检查}{22}{subsection.10.4}%
-\contentsline {section}{\numberline {11}不足与后续改进}{22}{section.11}%
-\contentsline {section}{\numberline {12}总结}{22}{section.12}%
-\contentsline {section}{参考资料}{23}{section*.3}%
+\contentsline {section}{摘要}{1}{figure.caption.2}%
+\contentsline {section}{\numberline {\nobreakspace {}\CJKnumber {1}、}背景与需求}{4}{section.1}%
+\contentsline {subsection}{\numberline {1.1}问题提出}{4}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}核心需求}{4}{subsection.1.2}%
+\contentsline {section}{\numberline {\nobreakspace {}\CJKnumber {2}、}系统设计}{5}{section.2}%
+\contentsline {subsection}{\numberline {2.1}总体架构}{5}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}主流程设计}{6}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}技术选型}{8}{subsection.2.3}%
+\contentsline {section}{\numberline {\nobreakspace {}\CJKnumber {3}、}关键技术实现}{9}{section.3}%
+\contentsline {subsection}{\numberline {3.1}客户端：轻量化与状态机}{9}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}客户端部署与自启动}{11}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}TCP 协议与跨设备通信}{12}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}服务端：分布式多客户端并发}{15}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}ROS2 节点化识别}{18}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}物资检测}{19}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}人脸识别门控}{20}{subsection.3.7}%
+\contentsline {subsection}{\numberline {3.8}库存记录与看板}{21}{subsection.3.8}%
+\contentsline {section}{\numberline {\nobreakspace {}\CJKnumber {4}、}数据集与模型训练}{22}{section.4}%
+\contentsline {subsection}{\numberline {4.1}数据准备}{22}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}训练过程与结果}{23}{subsection.4.2}%
+\contentsline {section}{\numberline {\nobreakspace {}\CJKnumber {5}、}项目迭代历程}{24}{section.5}%
+\contentsline {subsection}{\numberline {5.1}版本演进}{24}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}关键取舍}{26}{subsection.5.2}%
+\contentsline {section}{\numberline {\nobreakspace {}\CJKnumber {6}、}系统评估}{26}{section.6}%
+\contentsline {subsection}{\numberline {6.1}系统特点}{26}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}不足与改进方向}{27}{subsection.6.2}%
+\contentsline {section}{\numberline {\nobreakspace {}\CJKnumber {7}、}总结}{27}{section.7}%
+\contentsline {section}{参考资料}{29}{table.caption.15}%
