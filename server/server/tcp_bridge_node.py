@@ -4,8 +4,9 @@ import csv
 import json
 import socket
 import threading
+import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -40,11 +41,25 @@ CSV_FIELDNAMES = [
     "received_at",
 ]
 
+HEALTH_LOG_INTERVAL_SEC = 30.0
+
 
 @dataclass
 class PendingResponse:
     event: threading.Event
     response: dict[str, Any] | None = None
+
+
+@dataclass
+class ClientSession:
+    address: tuple[str, int]
+    connected_at: float
+    lock: threading.Lock = field(default_factory=threading.Lock)
+    request_count: int = 0
+    error_count: int = 0
+    bytes_received: int = 0
+    bytes_sent: int = 0
+    last_active: float = field(default_factory=time.monotonic)
 
 
 class TcpBridgeNode(Node):
@@ -54,6 +69,8 @@ class TcpBridgeNode(Node):
         self.declare_parameter("host", "0.0.0.0")
         self.declare_parameter("port", 9000)
         self.declare_parameter("request_timeout_sec", 15.0)
+        self.declare_parameter("max_connections", 10)
+        self.declare_parameter("health_log_interval_sec", HEALTH_LOG_INTERVAL_SEC)
         self.declare_parameter("material_image_topic", "/material_counter/image")
         self.declare_parameter("material_result_topic", "/material_counter/counts")
         self.declare_parameter("face_image_topic", "/face_recognize/image")
@@ -63,6 +80,10 @@ class TcpBridgeNode(Node):
         self.host = str(self.get_parameter("host").value)
         self.port = int(self.get_parameter("port").value)
         self.request_timeout_sec = float(self.get_parameter("request_timeout_sec").value)
+        self.max_connections = int(self.get_parameter("max_connections").value)
+        if self.max_connections <= 0:
+            self.max_connections = 0
+        self.health_log_interval_sec = max(5.0, float(self.get_parameter("health_log_interval_sec").value))
         inventory_csv_path_value = str(self.get_parameter("inventory_csv_path").value).strip()
         if not inventory_csv_path_value or inventory_csv_path_value == "auto":
             self.inventory_csv_path = resolve_default_inventory_csv_path()
@@ -91,6 +112,12 @@ class TcpBridgeNode(Node):
         self._client_threads: set[threading.Thread] = set()
         self._client_sockets: set[socket.socket] = set()
         self._client_lock = threading.Lock()
+        self._session_lock = threading.Lock()
+        self._sessions: dict[str, ClientSession] = {}
+        self._total_requests: int = 0
+        self._start_time_sec: float = time.monotonic()
+
+        self._health_timer = self.create_timer(self.health_log_interval_sec, self._log_health_report)
 
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -161,11 +188,27 @@ class TcpBridgeNode(Node):
                 self.get_logger().error("Failed to accept TCP client connection")
                 continue
 
+            peer_key = f"{address[0]}:{address[1]}"
+            if self.max_connections > 0:
+                with self._session_lock:
+                    active = len(self._sessions)
+                if active >= self.max_connections:
+                    self.get_logger().warn(
+                        f"Rejected connection from {peer_key} — {active}/{self.max_connections} slots occupied"
+                    )
+                    try:
+                        client_socket.close()
+                    except OSError:
+                        pass
+                    continue
+
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            with self._session_lock:
+                self._sessions[peer_key] = ClientSession(address=address, connected_at=time.monotonic())
             thread = threading.Thread(
                 target=self._client_loop,
                 args=(client_socket, address),
-                name=f"tcp-client-{address[0]}:{address[1]}",
+                name=f"tcp-client-{peer_key}",
                 daemon=True,
             )
             with self._client_lock:
@@ -175,13 +218,14 @@ class TcpBridgeNode(Node):
 
     def _client_loop(self, client_socket: socket.socket, address: tuple[str, int]) -> None:
         peer = f"{address[0]}:{address[1]}"
-        self.get_logger().info(f"TCP client connected: {peer}")
+        self.get_logger().info(f"TCP client connected: {peer}  [active={self._active_session_count()}]")
 
         try:
             while not self._stop_event.is_set():
                 request_id: str | None = None
                 try:
                     request, attachment = receive_message(client_socket)
+                    self._record_session_stats(peer, request_count=1, bytes_recv=len(json.dumps(request, ensure_ascii=False).encode("utf-8")) + len(attachment))
                     request_id = self._resolve_request_id(request.get("request_id"))
                     response = self._handle_request(request, request_id, attachment)
                 except ConnectionClosedError:
@@ -195,10 +239,14 @@ class TcpBridgeNode(Node):
                     response = make_error_response("INTERNAL_ERROR", str(exc), request_id)
 
                 try:
+                    response_bytes = json.dumps(response, ensure_ascii=False).encode("utf-8")
                     send_json_message(client_socket, response)
+                    self._record_session_stats(peer, bytes_sent=len(response_bytes))
                 except OSError:
                     break
         finally:
+            with self._session_lock:
+                self._sessions.pop(peer, None)
             with self._client_lock:
                 self._client_sockets.discard(client_socket)
                 self._client_threads.discard(threading.current_thread())
@@ -206,7 +254,52 @@ class TcpBridgeNode(Node):
                 client_socket.close()
             except OSError:
                 pass
-            self.get_logger().info(f"TCP client disconnected: {peer}")
+            self.get_logger().info(f"TCP client disconnected: {peer}  [active={self._active_session_count()}]")
+
+    def _active_session_count(self) -> int:
+        with self._session_lock:
+            return len(self._sessions)
+
+    def _record_session_stats(
+        self,
+        peer: str,
+        *,
+        request_count: int = 0,
+        error_count: int = 0,
+        bytes_recv: int = 0,
+        bytes_sent: int = 0,
+    ) -> None:
+        with self._session_lock:
+            session = self._sessions.get(peer)
+        if session is None:
+            return
+        with session.lock:
+            session.request_count += request_count
+            session.error_count += error_count
+            session.bytes_received += bytes_recv
+            session.bytes_sent += bytes_sent
+            session.last_active = time.monotonic()
+        self._total_requests += request_count
+
+    def _log_health_report(self) -> None:
+        with self._session_lock:
+            sessions = list(self._sessions.items())
+            total = len(sessions)
+
+        if total == 0:
+            self.get_logger().info("TCP health report: 0 active connections")
+            return
+
+        uptime_sec = time.monotonic() - self._start_time_sec
+        lines = [f"TCP health report — uptime {uptime_sec:.0f}s, {total} connections, {self._total_requests} total requests"]
+        for peer, session in sessions:
+            with session.lock:
+                conn_sec = time.monotonic() - session.connected_at
+                lines.append(
+                    f"  {peer}  id={conn_sec:.0f}s  req={session.request_count}  "
+                    f"err={session.error_count}  rx={session.bytes_received}B  tx={session.bytes_sent}B"
+                )
+        self.get_logger().info("\n".join(lines))
 
     def _handle_request(self, request: dict[str, Any], request_id: str, attachment: bytes) -> dict[str, Any]:
         request_type = request.get("type")
