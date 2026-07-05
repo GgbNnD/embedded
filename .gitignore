@@ -13,3 +13,6 @@ server/log/
 !server/assets/known_face/*.jpeg
 !server/assets/known_face/*.png
 !docs/latex/figures/*
+rknn-toolkit/
+packages/
+net/
