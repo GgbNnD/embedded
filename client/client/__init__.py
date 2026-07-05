@@ -1,1 +1,1 @@
-"""ROS 2 client package for the unified inventory workflow."""
+"""RK3399Pro 本地出入库管理客户端 — 本地人脸识别 + 本地NPU物资检测 + 加密通信"""

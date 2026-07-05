@@ -3,20 +3,24 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "embedded-client"
-version = "0.1.0"
-description = "Standalone client for face/material capture and inventory submission."
+name = "embedded-client-rk3399pro"
+version = "0.2.0"
+description = "RK3399Pro 本地出入库管理客户端 — 本地人脸识别(dlib) + 本地NPU物资检测(rknn-toolkit-lite) + 加密通信(ECDH+AES-GCM)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 dependencies = [
   "numpy",
   "opencv-python",
+  "face_recognition",
+  "cryptography",
+  "netifaces",
+  "rknn-toolkit-lite>=1.7.5",
+  "Pillow",
 ]
 
 [project.scripts]
 embedded-client = "client.ui_node:main"
 embedded-client-camera = "client.camera_node:main"
-embedded-client-server = "client.tcp_client_node:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
