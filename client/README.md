@@ -1,392 +1,205 @@
-# client
+# client — RK3399Pro 客户端
 
-`client` 现在是一个独立的 Python 客户端，不再依赖 ROS2 构建，也不需要 `colcon`、`ament`、`rclpy` 才能安装运行。
+运行在 RK3399Pro 开发板上的独立 Python 客户端。不需要 ROS2，不需要 `colcon`。
 
-它负责：
+## 核心功能
 
-- 调用本地摄像头采集画面
-- 通过 TCP 连接远端 `server`
-- 完成“开始操作 -> 人脸识别 -> 物资前后识别 -> 差异计算 -> 上传记录”的完整流程
-- 提供 `tkinter` 图形界面
+| 功能 | 实现 | 位置 |
+|------|------|------|
+| 摄像头采集 | OpenCV `cv2.VideoCapture` | `camera_node.py` |
+| 人脸识别 | dlib + face_recognition（本地） | `face_recognizer.py` |
+| 物资检测 | RKNN NPU YOLO（本地） | `yolo_detector.py` + `yolo_postprocess.py` |
+| 服务器发现 | UDP 组播（端口 8888） | `discovery.py` |
+| 密钥交换 | ECDH P-256（端口 8889） | `ecdh_handler.py` |
+| 加密通信 | AES-256-GCM（端口 8890） | `encrypted_protocol.py` + `encrypted_tcp_client.py` |
+| 业务流程 | 状态机：人脸→拍照→检测→差异→加密上报 | `logic_node.py` |
+| 用户界面 | tkinter | `ui_node.py` |
 
-`server` 端如果仍然保留 ROS2 没问题，`client` 和 `server` 之间只通过 TCP 协议通信。
+## 依赖
 
-## 1. 目录结构
+```
+Python >= 3.8
+numpy, opencv-python, Pillow
+cryptography, netifaces
+dlib, face_recognition
+rknn-toolkit-lite >= 1.7.5
+```
+
+## 环境安装 (RK3399Pro 板端)
+
+```bash
+# 1. 创建环境
+conda create -n rknn python=3.8
+conda activate rknn
+
+# 2. 基础库
+pip install numpy opencv-python Pillow
+
+# 3. 加密通信
+pip install cryptography netifaces
+
+# 4. 人脸识别 (dlib 需从源码编译, ~30分钟)
+pip install dlib face_recognition
+
+# 5. RKNN NPU 推理
+pip install rknn_toolkit_lite-1.7.5-cp38-cp38-linux_aarch64.whl
+
+# 6. GUI (可选)
+conda install tk
+```
+
+## 准备数据
+
+将服务器上的文件复制到板端：
+
+```bash
+# 已知人脸库
+scp user@server:/home/cells/embedded/server/assets/known_face/* \
+    /home/cells/embedded/client/assets/known_faces/
+
+# RKNN 模型
+scp user@server:/home/cells/embedded/weights/materials_yolo/last_int8_rk3399pro.rknn \
+    /home/cells/embedded/client/models/
+```
+
+## 启动
+
+```bash
+cd /home/cells/embedded/client
+
+# 默认启动 (自动发现服务器)
+python -m client.ui_node
+
+# 显式指定参数
+python -m client.ui_node \
+  --camera-index 0 \
+  --fps 5 \
+  --known-face-dir assets/known_faces \
+  --rknn-model-path models/last_int8_rk3399pro.rknn \
+  --face-tolerance 0.45 \
+  --conf-threshold 0.25 \
+  --log-level INFO
+```
+
+## 常用参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--camera-index` | `0` | 摄像头索引 (`/dev/video0`) |
+| `--width` | `1280` | 捕获宽度 |
+| `--height` | `720` | 捕获高度 |
+| `--fps` | `5.0` | 预览帧率 |
+| `--known-face-dir` | `assets/known_faces` | 已知人脸库路径 |
+| `--face-tolerance` | `0.45` | 人脸匹配容差 |
+| `--face-detection-model` | `hog` | `hog`(CPU快) 或 `cnn`(GPU准) |
+| `--rknn-model-path` | `models/last_int8_rk3399pro.rknn` | RKNN 模型文件 |
+| `--conf-threshold` | `0.25` | YOLO 置信度阈值 |
+| `--iou-threshold` | `0.45` | NMS IoU 阈值 |
+| `--face-timeout-sec` | `60.0` | 人脸识别超时 |
+| `--log-level` | `INFO` | DEBUG / INFO / WARNING / ERROR |
+
+## 调试命令
+
+测试摄像头：
+
+```bash
+python -m client.camera_node --output test.jpg --timeout-sec 10
+```
+
+测试人脸识别：
+
+```bash
+python -c "
+from client.face_recognizer import FaceRecognizer
+import cv2
+r = FaceRecognizer('assets/known_faces')
+r.load()
+img = cv2.imread('test.jpg')
+print(r.get_single_known_person(img))
+"
+```
+
+## 目录结构
 
 ```text
 client/
 ├── client/
-│   ├── camera_backend.py   # 相机后端选择与 rpicam 命令拼装
-│   ├── camera_node.py      # 本地相机采集组件
-│   ├── config.py           # 命令行参数与运行配置
-│   ├── image_utils.py      # 图像编码与灰度统计
-│   ├── logic_node.py       # 业务流程状态机
-│   ├── logic_utils.py      # 纯业务逻辑辅助函数
-│   ├── tcp_client_node.py  # TCP 客户端
-│   ├── tcp_protocol.py     # 长度前缀 JSON + 二进制附件协议
-│   └── ui_node.py          # tkinter 图形界面与程序入口
-├── scripts/
-│   └── run_client          # 仓库内直接启动入口
-├── test/                   # 单元测试
-├── pyproject.toml          # 标准 Python 包配置
-└── README.md
+│   ├── ui_node.py           # tkinter GUI + main()入口
+│   ├── logic_node.py        # 工作流状态机 (idle→face→yolo→submit)
+│   ├── logic_utils.py       # 纯函数 (差异计算/负载构造/格式化)
+│   ├── config.py            # CLI参数配置
+│   ├── camera_node.py       # OpenCV摄像头
+│   ├── face_recognizer.py   # 本地dlib人脸识别
+│   ├── yolo_detector.py     # RKNN NPU YOLO检测
+│   ├── yolo_postprocess.py  # YOLO后处理 (letterbox/NMS)
+│   ├── encrypted_tcp_client.py  # 加密TCP客户端
+│   ├── encrypted_protocol.py    # AES-GCM有线协议
+│   ├── ecdh_handler.py      # ECDH握手处理器
+│   ├── discovery.py         # UDP组播发现
+│   ├── crypto_utils.py      # ECDH+AES工具
+│   ├── peer_key.py          # IP→密钥映射
+│   └── platform_utils.py    # 网络工具
+├── assets/known_faces/      # 已知人脸库
+├── models/                  # RKNN模型
+├── scripts/                 # 启动脚本
+└── pyproject.toml           # 包配置
 ```
 
-虽然文件名里还保留了 `*_node`，但这里只是为了延续原来的分层命名，不再表示 ROS2 节点。
+## 线程模型
 
-## 2. 依赖
+```
+main() [主线程 = tkinter UI loop]
+│
+├── CameraNode._capture_loop       [daemon]  每200ms抓帧存入缓存
+├── LogicNode._tick_loop           [daemon]  每100ms检查人脸识别时机
+├── ServerDiscovery._send_loop     [daemon]  每3s发送UDP组播广播
+├── ServerDiscovery._recv_loop     [daemon]  接收组播→触发发现回调
+├── EcdhHandler._handshake_loop    [daemon]  连接8889→交换公钥→存密钥
+│
+└── [临时线程, 任务完成即退出]
+    ├── 人脸识别: 抓帧→dlib检测→匹配→推进状态
+    ├── 物资检测: 抓帧→letterbox→NPU推理→NMS→推进状态
+    └── 记录发送: AES加密→TCP发送→收ACK→推进状态
+```
 
-- Python 3.10+
-- `numpy`
-- `opencv-python`
-- 树莓派环境下可执行的 `rpicam-still`
-- 带 `tkinter` 支持的 Python
+## 常见问题
 
-如果你用的是 conda Python，缺少 `tkinter` 时可以先装：
+### dlib 编译失败
 
 ```bash
-conda install tk
+sudo apt-get install build-essential cmake libopenblas-dev
+pip install dlib --no-cache-dir -v
 ```
 
-如果你使用仓库里已有的 conda 环境：
+### cmake 版本太低
+
+dlib 需要 cmake >= 3.1。若系统 cmake 版本过低：
 
 ```bash
-conda activate alg
+pip install cmake --upgrade
+# 或
+sudo apt-get install cmake  # Ubuntu 20.04+已默认3.16
 ```
 
-## 3. 安装
-
-在 `client/` 目录下执行：
+### 摄像头打不开
 
 ```bash
-cd /home/cells/embedded/client
-pip install -e .
+# 检查设备
+ls /dev/video*
+v4l2-ctl --list-devices
+
+# 测试
+python -c "import cv2; cap=cv2.VideoCapture(0); print(cap.isOpened())"
 ```
 
-如果只想在仓库里直接跑，也可以不安装，直接：
+### 板端内存不足
+
+YOLO 模型在 NPU 上运行，NPU 有自己的 DDR。如果系统内存紧张：
 
 ```bash
-cd /home/cells/embedded/client
-python scripts/run_client
+# 关闭不必要的 X11 服务
+sudo systemctl stop lightdm
+
+# 增大 swap
+sudo fallocate -l 2G /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
 ```
-
-## 4. 快速启动
-
-默认启动：
-
-```bash
-embedded-client
-```
-
-指定远端 server：
-
-```bash
-embedded-client \
-  --server-host 192.168.1.20 \
-  --server-port 9100
-```
-
-树莓派相机启动方式：
-
-```bash
-embedded-client \
-  --camera-backend rpicam \
-  --fps 5 \
-  --server-host 192.168.1.20 \
-  --server-port 9100
-```
-
-如果你不想安装 console script，也可以直接：
-
-```bash
-python scripts/run_client \
-  --camera-backend rpicam \
-  --server-host 192.168.1.20 \
-  --server-port 9100
-```
-
-## 5. 常用参数
-
-| 参数 | 默认值 | 说明 |
-|---|---:|---|
-| `--camera-backend` | `auto` | `auto` 优先找 `rpicam-still`，找不到再回退到 OpenCV |
-| `--camera-index` | `0` | OpenCV 摄像头设备号，仅 `opencv` 后端生效 |
-| `--width` | `1280` | 采集宽度 |
-| `--height` | `720` | 采集高度 |
-| `--fps` | `5` | Capture and preview FPS |
-| `--rpicam-executable` | `rpicam-still` | `rpicam` 命令名或绝对路径 |
-| `--rpicam-timeout-ms` | `1` | 单次 `rpicam` 抓图等待时间 |
-| `--server-host` | `127.0.0.1` | server TCP 地址 |
-| `--server-port` | `9000` | server TCP 端口 |
-| `--connect-timeout-sec` | `3.0` | 建立 TCP 连接超时 |
-| `--request-timeout-sec` | `15.0` | 单次 TCP 请求超时 |
-| `--image-format` | `webp` | 发图压缩格式，默认 `webp` 比旧的 `base64+jpeg` 更省带宽 |
-| `--image-quality` | `75` | 发图压缩质量，兼容旧参数名 `--jpeg-quality` |
-| `--face-retry-interval-sec` | `1.0` | 人脸识别重试周期 |
-| `--face-timeout-sec` | `60.0` | 人脸识别总超时 |
-| `--settle-delay-sec` | `3.5` | Reserved compatibility option from the previous auto-capture flow |
-| `--stable-hold-sec` | `1.0` | Reserved compatibility option from the previous auto-capture flow |
-| `--stability-threshold` | `3.0` | Reserved compatibility option from the previous auto-capture flow |
-| `--stable-timeout-sec` | `8.0` | Reserved compatibility option from the previous auto-capture flow |
-
-例如，如果你想把预览和采集目标帧率改成 8 FPS：
-
-```bash
-embedded-client --fps 8
-```
-
-## 6. 调试命令
-
-检查相机是否能抓到图：
-
-```bash
-embedded-client-camera \
-  --camera-backend rpicam \
-  --output test.jpg
-```
-
-只检查 TCP 服务端是否能连通：
-
-```bash
-embedded-client-server \
-  --server-host 192.168.1.20 \
-  --server-port 9100
-```
-
-如果没安装 console script，也可以直接：
-
-```bash
-python -m client.camera_node --camera-backend rpicam --output test.jpg
-python -m client.tcp_client_node --server-host 192.168.1.20 --server-port 9100
-```
-
-## 7. 工作流程
-
-当前统一流程如下：
-
-1. 点击 `开始操作`
-2. 客户端定时抓拍人脸图并发给 `server`
-3. 当 `server` 返回“恰好 1 张脸，且不是 `unknown`”时，记录人员姓名
-4. 将摄像头移动到物资区域
-5. 点击 `Capture Materials`
-6. 抓拍操作前物资图并发给 `server`
-7. UI 进入 `等待点击完成`
-8. 用户完成实际操作后点击 `完成`
-9. 抓拍操作后物资图并发给 `server`
-10. 计算前后差异并上传 inventory 记录
-
-## 8. 常见问题
-
-### 8.1 树莓派相机打不开
-
-先直接在终端测试：
-
-```bash
-rpicam-still -n -t 1 -o test.jpg
-```
-
-如果这里都失败，先解决系统层的相机权限或驱动问题。
-
-### 8.2 USB 摄像头能用，树莓派相机不能用
-
-强制改用树莓派后端：
-
-```bash
-embedded-client --camera-backend rpicam
-```
-
-如果你接的是 USB 摄像头，则改成：
-
-```bash
-embedded-client --camera-backend opencv --camera-index 0
-```
-
-### 8.3 一直停在识别人脸
-
-通常是：
-
-- 人脸没有进入画面
-- 画面里不止一张脸
-- 识别结果是 `unknown`
-- `server` 端的人脸库不对
-
-### 8.4 操作前物资没有被正确抓拍
-
-现在操作前物资抓拍改成了手动触发：
-
-- 先等人脸识别成功
-- 把摄像头移到物资区域
-- 点击 `Capture Materials`
-- 如果取景不对，就调整镜头后再点
-
-### 8.5 开机自启日志里提示 `No module named cv2`
-
-这通常不是代码问题，而是“自动启动时使用了另一套 Python”，那套 Python 没装 `opencv-python`。
-
-先在树莓派终端里确认你平时手动能跑通的是哪一个 Python：
-
-```bash
-which python3
-python3 -c "import cv2; print(cv2.__version__)"
-```
-
-如果你用的是虚拟环境或 conda，也可以直接检查那套解释器：
-
-```bash
-/path/to/python -c "import cv2; print(cv2.__version__)"
-```
-
-当前仓库里的自启动脚本会按下面顺序自动选解释器：
-
-1. 环境变量 `CLIENT_PYTHON_BIN`
-2. `client/.venv/bin/python`
-3. `~/miniconda3/envs/alg/bin/python`
-4. `python3`
-
-如果树莓派上的 Python 路径和这些都不同，最直接的做法是编辑：
-
-- [start_client_autostart.sh](/home/cells/embedded/client/scripts/start_client_autostart.sh)
-
-把：
-
-```bash
-DEFAULT_CONDA_PYTHON="${HOME}/miniconda3/envs/alg/bin/python"
-```
-
-改成你的实际 Python 路径，或者在 `~/.config/autostart/embedded-client.desktop` 里改成：
-
-```text
-Exec=env CLIENT_PYTHON_BIN=/your/python/path /home/cells/embedded/client/scripts/start_client_autostart.sh
-```
-
-修改后重启，或先手动执行脚本验证：
-
-```bash
-/home/cells/embedded/client/scripts/start_client_autostart.sh
-```
-
-日志会写到：
-
-```text
-/home/cells/embedded/client/client_autostart.log
-```
-
-日志里现在会额外打印：
-
-- 实际使用的 `PYTHON_BIN`
-- `python --version`
-- `cv2` 是否导入成功
-
-## 9. 树莓派开机自启
-
-如果你的 `client` 运行的是当前这个 `tkinter` 图形界面，推荐使用“桌面自动启动”而不是普通后台 `systemd` 服务。
-
-原因：
-
-- `embedded-client` 需要图形桌面环境
-- 如果机器还没进入桌面会话，直接后台启动通常会因为没有 `DISPLAY` 而失败
-
-### 9.1 先确认手动运行没问题
-
-在树莓派上先确认下面命令能正常打开客户端：
-
-```bash
-cd /home/cells/embedded/client
-python3 scripts/run_client \
-  --camera-backend rpicam \
-  --server-host 192.168.1.20 \
-  --server-port 9000
-```
-
-### 9.2 给仓库里的启动脚本加执行权限
-
-仓库里已经提供了一个自动启动脚本：
-
-```text
-client/scripts/start_client_autostart.sh
-```
-
-执行：
-
-```bash
-chmod +x /home/cells/embedded/client/scripts/start_client_autostart.sh
-```
-
-这个脚本会启动：
-
-```bash
-python3 scripts/run_client \
-  --camera-backend rpicam \
-  --server-host 192.168.1.20 \
-  --server-port 9000
-```
-
-并把日志写到：
-
-```text
-/home/cells/embedded/client/client_autostart.log
-```
-
-### 9.3 创建桌面自动启动项
-
-在树莓派上执行：
-
-```bash
-mkdir -p ~/.config/autostart
-cat > ~/.config/autostart/embedded-client.desktop <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Embedded Client
-Exec=/home/cells/embedded/client/scripts/start_client_autostart.sh
-Path=/home/cells/embedded/client
-Terminal=false
-X-GNOME-Autostart-enabled=true
-EOF
-```
-
-### 9.4 打开树莓派自动登录桌面
-
-如果你希望“上电后不手动登录也自动弹出 client 界面”，还需要让 Raspberry Pi OS 自动登录到图形桌面。
-
-可以执行：
-
-```bash
-sudo raspi-config
-```
-
-然后进入：
-
-```text
-System Options -> Boot / Auto Login -> Desktop Autologin
-```
-
-### 9.5 重启验证
-
-执行：
-
-```bash
-sudo reboot
-```
-
-重启后检查：
-
-- 是否自动进入桌面
-- 是否自动弹出 client 窗口
-- 如果没起来，查看日志 `client/client_autostart.log`
-
-### 9.6 如果你改了 server 地址或端口
-
-直接编辑这个脚本即可：
-
-- [start_client_autostart.sh](/home/cells/embedded/client/scripts/start_client_autostart.sh)
-
-### 8.5 无显示器环境
-
-如果是远程终端或无桌面环境，可以先做无头验证：
-
-```bash
-embedded-client-camera --camera-backend rpicam --output test.jpg
-embedded-client-server --server-host 192.168.1.20 --server-port 9100
-```
-
-也就是先分别确认“本地能拍图”和“远端能连通”，再回到图形界面联调。
